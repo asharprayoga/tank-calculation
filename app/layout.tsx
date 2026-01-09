@@ -12,7 +12,6 @@ export default function RootLayout({
 }) {
   return (
     <html lang="en">
-      {/* JANGAN kasih bg-white di body, biar theme di globals.css kepake */}
       <body>{children}</body>
     </html>
   );
