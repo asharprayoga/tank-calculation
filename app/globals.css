@@ -1,13 +1,11 @@
-@tailwind base;
-@tailwind components;
-@tailwind utilities;
+@import "tailwindcss";
 
 /* === Rekayasa Engineering Theme === */
 :root{
-  --re-blue: 37 99 160;   /* biru utama */
-  --re-green: 102 187 68; /* hijau aksen */
-  --re-orange: 245 158 11;/* oranye highlight */
-  --re-ink: 10 22 39;     /* warna teks gelap */
+  --re-blue: 37 99 160;
+  --re-green: 102 187 68;
+  --re-orange: 245 158 11;
+  --re-ink: 10 22 39;
 }
 
 html, body {
@@ -19,7 +17,6 @@ html, body {
     linear-gradient(180deg, rgba(248,252,255,1), rgba(236,245,252,1));
 }
 
-/* Card “kaca” ala corporate */
 .re-card{
   background: rgba(255,255,255,0.78);
   border: 1px solid rgba(15, 23, 42, 0.10);
@@ -27,12 +24,10 @@ html, body {
   backdrop-filter: blur(10px);
 }
 
-/* teks sekunder */
 .re-muted{
   color: rgba(var(--re-ink), 0.70);
 }
 
-/* Background geometric/polygon ringan */
 .re-geo {
   position: relative;
   overflow: hidden;
@@ -51,7 +46,6 @@ html, body {
   pointer-events: none;
 }
 
-/* === Animated Gradient RE Headline === */
 .re-gradient-text {
   background: linear-gradient(
     90deg,
