@@ -4,10 +4,10 @@
    Rekayasa Engineering Theme
 ================================ */
 :root{
-  --re-blue: 37 99 160;    /* Biru RE */
-  --re-green: 102 187 68;  /* Hijau RE */
-  --re-orange: 245 158 11; /* Oranye RE */
-  --re-ink: 10 22 39;      /* Navy gelap */
+  --re-blue: 37 99 160;
+  --re-green: 102 187 68;
+  --re-orange: 245 158 11;
+  --re-ink: 10 22 39;
 }
 
 html, body {
@@ -19,7 +19,6 @@ html, body {
     linear-gradient(180deg, #f8fcff, #eef6fc);
 }
 
-/* Card */
 .re-card{
   background: rgba(255,255,255,0.82);
   border: 1px solid rgba(15,23,42,0.10);
@@ -31,7 +30,6 @@ html, body {
   color: rgba(var(--re-ink), 0.72);
 }
 
-/* Subtle geometric background */
 .re-geo{
   position: relative;
   overflow: hidden;
@@ -50,36 +48,28 @@ html, body {
 }
 
 /* ===============================
-   Animated Gradient Text (SAFE)
+   Solid "Logo-like" Title
 ================================ */
-.re-gradient-text{
-  display: inline-block;           /* WAJIB */
-  line-height: 1.05;
-
-  /* fallback */
-  color: rgb(var(--re-blue));
-
-  background-image: linear-gradient(
-    90deg,
-    rgba(var(--re-blue),1),
-    rgba(var(--re-green),1),
-    rgba(var(--re-orange),1),
-    rgba(var(--re-blue),1)
-  );
-  background-size: 300% 100%;
-  background-position: 0% 50%;
-
-  -webkit-background-clip: text;
-  background-clip: text;
-
-  /* INI KUNCI BIAR NGGAK PUTIH */
-  -webkit-text-fill-color: transparent;
-
-  animation: reGradientMove 7s ease-in-out infinite;
+.re-title {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 0.02em;
 }
 
-@keyframes reGradientMove{
-  0%{ background-position: 0% 50%; }
-  50%{ background-position: 100% 50%; }
-  100%{ background-position: 0% 50%; }
+.re-title .tank {
+  color: rgb(var(--re-blue));
+}
+
+.re-title .calc {
+  color: rgb(var(--re-green));
+}
+
+.re-title .dot {
+  display: inline-block;
+  width: 0.22em;
+  height: 0.22em;
+  margin-left: 0.08em;
+  border-radius: 999px;
+  background: rgb(var(--re-orange));
+  transform: translateY(-0.08em);
 }
