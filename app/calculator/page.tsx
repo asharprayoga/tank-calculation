@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useMemo, useState } from "react";
 
-// IMPORT LANGSUNG KE FILE (paling aman, anti-error resolve)
+//  IMPORT LANGSUNG KE FILE (paling aman, anti-error resolve)
 import { calcShell } from "../../lib/api650/shell";
 import type { ShellInput, Unit } from "../../lib/api650/types";
 
