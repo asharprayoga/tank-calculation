@@ -73,3 +73,25 @@ html, body {
   opacity: 0.55;
   pointer-events: none;
 }
+
+/* === Animated Gradient RE Headline === */
+.re-gradient-text {
+  background: linear-gradient(
+    90deg,
+    rgba(var(--re-blue), 1),
+    rgba(var(--re-green), 1),
+    rgba(var(--re-orange), 1),
+    rgba(var(--re-blue), 1)
+  );
+  background-size: 300% 100%;
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+  animation: reGradientMove 6s ease-in-out infinite;
+}
+
+@keyframes reGradientMove {
+  0% { background-position: 0% 50%; }
+  50% { background-position: 100% 50%; }
+  100% { background-position: 0% 50%; }
+}
