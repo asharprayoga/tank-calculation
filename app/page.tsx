@@ -87,8 +87,9 @@ export default function Home() {
               </h1>
 
               <p className="mt-6 max-w-2xl text-base md:text-lg re-muted leading-relaxed">
-                Platform kalkulator untuk <strong>perhitungan dan verifikasi desain tangki</strong>{" "}
-                mengacu pada <strong>API 650</strong>—input ringkas, hasil jelas, dan siap
+                Platform kalkulator untuk{" "}
+                <strong>perhitungan dan verifikasi desain tangki</strong> mengacu
+                pada <strong>API 650</strong>—input ringkas, hasil jelas, dan siap
                 untuk proses review (SI / US).
               </p>
 
@@ -134,84 +135,94 @@ export default function Home() {
               </div>
             </div>
 
-            {/* RIGHT: Panel tinted (Indonesia, ringkas) */}
+            {/* RIGHT: Panel kanan (tinted + shapes) */}
             <div className="lg:col-span-5">
-              <div className="rounded-[1.75rem] p-6 md:p-7 re-panel-blue">
-                <div className="flex items-start justify-between gap-4">
-                  <div>
-                    <div className="text-xs re-muted">Sorotan</div>
-                    <div className="mt-1 text-lg font-semibold text-[rgb(var(--re-ink))]">
-                      Kapabilitas Utama
+              <div className="re-panel-shapes p-6 md:p-7">
+                {/* shape layers */}
+                <div className="re-panel-grid" />
+                <div className="re-panel-accent" />
+
+                <div className="re-panel-content">
+                  <div className="flex items-start justify-between gap-4">
+                    <div>
+                      <div className="text-xs re-muted">Sorotan</div>
+                      <div className="mt-1 text-lg font-semibold text-[rgb(var(--re-ink))]">
+                        Kapabilitas Utama
+                      </div>
+                    </div>
+
+                    <span className="px-3 py-1.5 rounded-2xl text-xs font-semibold border border-black/10 bg-white/70">
+                      API 650
+                    </span>
+                  </div>
+
+                  <div className="mt-5 grid grid-cols-1 gap-3">
+                    <div className="rounded-2xl p-4 re-panel-item">
+                      <div className="text-sm font-semibold text-[rgb(var(--re-ink))]">
+                        Sistem Satuan (SI / US)
+                      </div>
+                      <div className="mt-1 text-sm re-muted leading-relaxed">
+                        Mendukung SI dan US untuk menjaga konsistensi perhitungan dari input
+                        hingga output.
+                      </div>
+                    </div>
+
+                    <div className="rounded-2xl p-4 re-panel-item">
+                      <div className="text-sm font-semibold text-[rgb(var(--re-ink))]">
+                        Verifikasi per Course
+                      </div>
+                      <div className="mt-1 text-sm re-muted leading-relaxed">
+                        Menampilkan kebutuhan tebal minimum dan status kelulusan (OK / NOT OK)
+                        per course.
+                      </div>
+                    </div>
+
+                    <div className="rounded-2xl p-4 re-panel-item">
+                      <div className="text-sm font-semibold text-[rgb(var(--re-ink))]">
+                        Struktur Modular
+                      </div>
+                      <div className="mt-1 text-sm re-muted leading-relaxed">
+                        Dirancang modular (Shell → Bottom → Roof → Wind → Seismic → Nozzle)
+                        untuk pengembangan bertahap.
+                      </div>
+                    </div>
+
+                    <div className="rounded-2xl p-4 re-panel-item">
+                      <div className="text-sm font-semibold text-[rgb(var(--re-ink))]">
+                        Catatan
+                      </div>
+                      <div className="mt-1 text-sm re-muted leading-relaxed">
+                        Mulai dari modul Shell. Modul lain disiapkan agar penambahan fitur tidak
+                        mengubah UI secara signifikan.
+                      </div>
                     </div>
                   </div>
 
-                  <span className="px-3 py-1.5 rounded-2xl text-xs font-semibold re-badge-orange">
-                    API 650
-                  </span>
-                </div>
+                  <div className="mt-6 flex flex-wrap gap-2">
+                    <button
+                      type="button"
+                      className="px-4 py-2 rounded-2xl text-sm font-semibold border border-black/10 bg-white/70 hover:bg-white/90 transition"
+                      onClick={() =>
+                        alert(
+                          "Dokumentasi Teknis (coming soon)\n\nNanti bisa diisi: referensi clause, asumsi, definisi simbol, contoh kasus."
+                        )
+                      }
+                    >
+                      Dokumentasi Teknis
+                    </button>
 
-                <div className="mt-5 grid grid-cols-1 gap-3">
-                  <div className="rounded-2xl p-4 re-card-blue">
-                    <div className="text-sm font-semibold text-[rgb(var(--re-ink))]">
-                      Sistem Satuan (SI / US)
-                    </div>
-                    <div className="mt-1 text-sm re-muted leading-relaxed">
-                      Mendukung SI dan US untuk menjaga konsistensi perhitungan dari input hingga output.
-                    </div>
+                    <button
+                      type="button"
+                      className="px-4 py-2 rounded-2xl text-sm font-semibold border border-black/10 bg-white/70 hover:bg-white/90 transition"
+                      onClick={() =>
+                        alert(
+                          "Bantuan & Dukungan (coming soon)\n\nNanti bisa diisi: cara lapor bug, request fitur, kontak PIC, dsb."
+                        )
+                      }
+                    >
+                      Bantuan & Dukungan
+                    </button>
                   </div>
-
-                  <div className="rounded-2xl p-4 re-card-green">
-                    <div className="text-sm font-semibold text-[rgb(var(--re-ink))]">
-                      Verifikasi per Course
-                    </div>
-                    <div className="mt-1 text-sm re-muted leading-relaxed">
-                      Menampilkan kebutuhan tebal minimum dan status kelulusan (OK / NOT OK) per course.
-                    </div>
-                  </div>
-
-                  <div className="rounded-2xl p-4 re-card-orange">
-                    <div className="text-sm font-semibold text-[rgb(var(--re-ink))]">
-                      Struktur Modular
-                    </div>
-                    <div className="mt-1 text-sm re-muted leading-relaxed">
-                      Dirancang modular (Shell → Bottom → Roof → Wind → Seismic → Nozzle) untuk pengembangan bertahap.
-                    </div>
-                  </div>
-
-                  <div className="rounded-2xl p-4 re-card-blue">
-                    <div className="text-sm font-semibold text-[rgb(var(--re-ink))]">
-                      Catatan
-                    </div>
-                    <div className="mt-1 text-sm re-muted leading-relaxed">
-                      Mulai dari modul Shell. Modul lain disiapkan agar penambahan fitur tidak mengubah UI secara signifikan.
-                    </div>
-                  </div>
-                </div>
-
-                <div className="mt-6 flex flex-wrap gap-2">
-                  <button
-                    type="button"
-                    className="px-4 py-2 rounded-2xl text-sm font-semibold transition re-btn-blue"
-                    onClick={() =>
-                      alert(
-                        "Dokumentasi Teknis (coming soon)\n\nNanti bisa diisi: referensi clause, asumsi, definisi simbol, contoh kasus."
-                      )
-                    }
-                  >
-                    Dokumentasi Teknis
-                  </button>
-
-                  <button
-                    type="button"
-                    className="px-4 py-2 rounded-2xl text-sm font-semibold transition re-btn-green"
-                    onClick={() =>
-                      alert(
-                        "Bantuan & Dukungan (coming soon)\n\nNanti bisa diisi: cara lapor bug, request fitur, kontak PIC, dsb."
-                      )
-                    }
-                  >
-                    Bantuan & Dukungan
-                  </button>
                 </div>
               </div>
             </div>
