@@ -165,6 +165,7 @@ export default function Home() {
               <div className="hidden sm:block">
                 <div className="text-xs md:text-sm re-muted">Tank Design Calculator (API 650 / API 620)</div>
                 <div className="mt-1 text-sm re-muted">Internal tool • Mechanical Engineering</div>
+                <div className="mt-1 text-sm re-muted">Developed by Anak Magang :)</div>
               </div>
             </div>
 
