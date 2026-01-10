@@ -1,24 +1,47 @@
+/* =========================================================
+   Animated Gradient — TankCalc Branding
+   ========================================================= */
+
 @keyframes reGradientShift {
-  0% { background-position: 0% 50%; }
-  50% { background-position: 100% 50%; }
-  100% { background-position: 0% 50%; }
+  0% {
+    background-position: 0% 50%;
+  }
+  50% {
+    background-position: 100% 50%;
+  }
+  100% {
+    background-position: 0% 50%;
+  }
 }
 
 .re-animated-gradient {
+  /* Gradient pakai warna brand RE */
   background: linear-gradient(
-    90deg,
+    120deg,
     rgb(var(--re-blue)),
     rgb(var(--re-green)),
     rgb(var(--re-orange)),
     rgb(var(--re-blue))
   );
-  background-size: 300% 100%;
+
+  background-size: 300% 300%;
+
+  /* Bikin gradient nempel ke teks */
   -webkit-background-clip: text;
   background-clip: text;
+
+  /* Penting buat Safari */
+  -webkit-text-fill-color: transparent;
   color: transparent;
-  animation: reGradientShift 6.5s ease-in-out infinite;
+
+  /* Animasi */
+  animation: reGradientShift 7s ease-in-out infinite;
+
+  /* Performance hint */
+  will-change: background-position;
 }
 
+/* Aksesibilitas: hormati user yang matiin animasi */
 @media (prefers-reduced-motion: reduce) {
   .re-animated-gradient {
     animation: none;
