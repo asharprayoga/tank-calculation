@@ -2,34 +2,13 @@
 @tailwind components;
 @tailwind utilities;
 
-/* =========================================================
-   RE Theme Tokens (RGB triplets)
-   ========================================================= */
 :root {
-  /* Silakan adjust kalau lo punya nilai resmi, tapi ini aman & enak dilihat */
   --re-blue: 21 92 170;
   --re-green: 99 179 66;
   --re-orange: 245 158 11;
   --re-ink: 15 23 42;
 }
 
-/* Base document */
-html,
-body {
-  height: 100%;
-}
-
-body {
-  margin: 0;
-  color: rgb(var(--re-ink));
-  background: #ffffff;
-  font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica,
-    Arial, "Apple Color Emoji", "Segoe UI Emoji";
-}
-
-/* =========================================================
-   RE Utility Classes (dipakai di page.tsx lo)
-   ========================================================= */
 .re-muted {
   color: rgba(15, 23, 42, 0.65);
 }
@@ -40,7 +19,6 @@ body {
   -webkit-backdrop-filter: blur(10px);
 }
 
-/* Background soft geometry */
 .re-geo {
   background:
     radial-gradient(1000px 520px at 10% 12%, rgba(var(--re-green), 0.10), transparent 58%),
@@ -49,44 +27,10 @@ body {
     linear-gradient(to bottom, rgba(255, 255, 255, 1), rgba(248, 250, 252, 1));
 }
 
-/* Title helper (biar kompatibel sama halaman lama yang masih pakai TankCalc. dot) */
-.re-title {
-  display: inline-flex;
-  align-items: baseline;
-  gap: 0.06em;
-}
-
-.re-title .tank {
-  color: rgb(var(--re-blue));
-}
-
-.re-title .calc {
-  color: rgb(var(--re-green));
-}
-
-.re-title .dot {
-  width: 0.35em;
-  height: 0.35em;
-  border-radius: 9999px;
-  background: rgb(var(--re-orange));
-  display: inline-block;
-  margin-left: 0.08em;
-  transform: translateY(-0.12em);
-}
-
-/* =========================================================
-   Animated Gradient — TankCalc Branding
-   ========================================================= */
 @keyframes reGradientShift {
-  0% {
-    background-position: 0% 50%;
-  }
-  50% {
-    background-position: 100% 50%;
-  }
-  100% {
-    background-position: 0% 50%;
-  }
+  0% { background-position: 0% 50%; }
+  50% { background-position: 100% 50%; }
+  100% { background-position: 0% 50%; }
 }
 
 .re-animated-gradient {
@@ -98,14 +42,10 @@ body {
     rgb(var(--re-blue))
   );
   background-size: 300% 300%;
-
   -webkit-background-clip: text;
   background-clip: text;
-
-  /* penting untuk Safari */
   -webkit-text-fill-color: transparent;
   color: transparent;
-
   animation: reGradientShift 7s ease-in-out infinite;
   will-change: background-position;
 }
@@ -116,3 +56,4 @@ body {
     background-size: 100% 100%;
   }
 }
+
