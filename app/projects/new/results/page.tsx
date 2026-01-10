@@ -6,11 +6,13 @@ import { useEffect, useMemo, useState } from "react";
 
 import {
   loadProjectDraft,
+  updateProjectDraft,
   type ProjectDraft,
   type DesignCaseKey,
 } from "../../../../lib/storage/projectDraft";
 
 import { runShellThickness } from "../../../../lib/engine/shellThickness";
+import { saveProjectSnapshot } from "../../../../lib/storage/savedProjects";
 
 function StepPill({
   label,
@@ -48,8 +50,37 @@ function getActiveCases(draft: ProjectDraft): DesignCaseKey[] {
   return (Object.keys(dc) as DesignCaseKey[]).filter((k) => dc[k]);
 }
 
+function escapeHtml(s: string) {
+  return s
+    .replaceAll("&", "&amp;")
+    .replaceAll("<", "&lt;")
+    .replaceAll(">", "&gt;")
+    .replaceAll('"', "&quot;")
+    .replaceAll("'", "&#039;");
+}
+
+function downloadTextFile(filename: string, content: string, mime: string) {
+  const blob = new Blob([content], { type: mime });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = filename;
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  URL.revokeObjectURL(url);
+}
+
+function csvEscape(val: string) {
+  if (val.includes('"') || val.includes(",") || val.includes("\n") || val.includes("\r")) {
+    return `"${val.replaceAll('"', '""')}"`;
+  }
+  return val;
+}
+
 export default function NewProjectResultsPage() {
   const [draft, setDraft] = useState<ProjectDraft | null>(null);
+  const [saveMsg, setSaveMsg] = useState<string>("");
 
   useEffect(() => {
     setDraft(loadProjectDraft());
@@ -99,6 +130,139 @@ export default function NewProjectResultsPage() {
     return draft?.units === "US" ? x.toFixed(4) : x.toFixed(2);
   };
 
+  const handleSaveProject = () => {
+    if (!draft) return;
+
+    const id = saveProjectSnapshot(draft, draft.savedProjectId);
+    updateProjectDraft({ savedProjectId: id });
+    setSaveMsg(`Project tersimpan. ID: ${id}`);
+    setTimeout(() => setSaveMsg(""), 4000);
+  };
+
+  const exportCSV = () => {
+    if (!draft || !calc) return;
+
+    const lines: string[] = [];
+    lines.push(["TankCalc Export", new Date().toISOString()].map(csvEscape).join(","));
+    lines.push(["Project", draft.projectName].map(csvEscape).join(","));
+    lines.push(["Standard", draft.recommendedStandard].map(csvEscape).join(","));
+    lines.push(["Units", draft.units].map(csvEscape).join(","));
+    lines.push([""].join(","));
+
+    // Header
+    lines.push(
+      [
+        "Course",
+        "Governing case",
+        `t_required (${thkUnit})`,
+        `t_adopted (${thkUnit})`,
+        "Utilization",
+        "Status",
+      ].map(csvEscape).join(",")
+    );
+
+    for (const r of calc.results) {
+      lines.push(
+        [
+          String(r.courseNo),
+          CASE_NAME[r.governingCase],
+          fmt(r.tRequired),
+          fmt(r.tAdopted),
+          Number.isFinite(r.utilization) ? r.utilization.toFixed(3) : "INF",
+          r.status,
+        ].map(csvEscape).join(",")
+      );
+    }
+
+    const filenameSafe = draft.projectName.replaceAll(/[^\w\-]+/g, "_");
+    downloadTextFile(
+      `TankCalc_${filenameSafe}_ShellThickness.csv`,
+      lines.join("\n"),
+      "text/csv;charset=utf-8;"
+    );
+  };
+
+  const exportPDF = () => {
+    if (!draft || !calc) return;
+
+    const rows = calc.results
+      .map(
+        (r) => `
+        <tr>
+          <td>${r.courseNo}</td>
+          <td>${escapeHtml(CASE_NAME[r.governingCase])}</td>
+          <td><b>${escapeHtml(fmt(r.tRequired))}</b></td>
+          <td>${escapeHtml(fmt(r.tAdopted))}</td>
+          <td>${escapeHtml(Number.isFinite(r.utilization) ? r.utilization.toFixed(3) : "∞")}</td>
+          <td style="font-weight:700; color:${r.status === "OK" ? "green" : "crimson"}">${r.status}</td>
+        </tr>
+      `
+      )
+      .join("");
+
+    const html = `
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8" />
+  <title>TankCalc Report - ${escapeHtml(draft.projectName)}</title>
+  <style>
+    body { font-family: Arial, sans-serif; padding: 24px; color:#111; }
+    .header { display:flex; align-items:center; gap:16px; }
+    .meta { margin-top: 12px; font-size: 12px; color:#444; }
+    table { width: 100%; border-collapse: collapse; margin-top: 16px; }
+    th, td { border: 1px solid #ddd; padding: 8px; font-size: 12px; }
+    th { background: #f4f6f8; text-align:left; }
+    .note { margin-top: 12px; font-size: 11px; color:#555; }
+    @media print { .no-print { display:none; } }
+  </style>
+</head>
+<body>
+  <div class="header">
+    <img src="/re-logo.png" style="height:42px" />
+    <div>
+      <h2 style="margin:0">TankCalc — Shell Thickness Report</h2>
+      <div class="meta">
+        Project: <b>${escapeHtml(draft.projectName)}</b> • Standard: <b>${escapeHtml(draft.recommendedStandard)}</b> • Units: <b>${escapeHtml(draft.units)}</b>
+      </div>
+    </div>
+  </div>
+
+  <table>
+    <thead>
+      <tr>
+        <th>Course</th>
+        <th>Governing case</th>
+        <th>t_required (${escapeHtml(thkUnit)})</th>
+        <th>t_adopted (${escapeHtml(thkUnit)})</th>
+        <th>Utilization</th>
+        <th>Status</th>
+      </tr>
+    </thead>
+    <tbody>
+      ${rows}
+    </tbody>
+  </table>
+
+  <div class="note">
+    Export PDF menggunakan dialog print browser. Pilih “Save as PDF”.
+  </div>
+
+  <div class="no-print" style="margin-top:16px;">
+    <button onclick="window.print()">Print / Save as PDF</button>
+  </div>
+</body>
+</html>
+`;
+
+    const w = window.open("", "_blank", "noopener,noreferrer");
+    if (!w) return;
+    w.document.open();
+    w.document.write(html);
+    w.document.close();
+    w.focus();
+  };
+
   return (
     <main className="min-h-screen re-geo">
       <div className="mx-auto max-w-6xl px-6 py-10 md:px-10 md:py-14">
@@ -131,6 +295,12 @@ export default function NewProjectResultsPage() {
             >
               Kembali (Step 3)
             </Link>
+            <Link
+              href="/projects"
+              className="px-4 py-2 rounded-2xl text-sm font-semibold border border-black/10 bg-white/70 hover:bg-white/90 transition"
+            >
+              Saved Projects
+            </Link>
           </div>
         </div>
 
@@ -152,7 +322,7 @@ export default function NewProjectResultsPage() {
                 Shell Thickness — OK/NOT OK per Course
               </h1>
               <p className="mt-2 text-sm md:text-base re-muted leading-relaxed">
-                Output ini fokus pada perhitungan kebutuhan tebal shell per course dan menentukan governing case.
+                Output ini fokus pada kebutuhan tebal shell per course, governing case, dan status OK/NOT OK.
               </p>
             </div>
 
@@ -163,6 +333,46 @@ export default function NewProjectResultsPage() {
                 <div><strong className="text-[rgb(var(--re-ink))]">Units:</strong> {draft.units}</div>
               </div>
             ) : null}
+          </div>
+
+          {/* SAVE + EXPORT */}
+          <div className="mt-6 rounded-2xl border border-black/10 bg-white/60 p-5">
+            <div className="text-sm font-semibold text-[rgb(var(--re-blue))]">Actions</div>
+            <div className="mt-3 flex flex-wrap gap-2">
+              <button
+                type="button"
+                onClick={handleSaveProject}
+                className="px-4 py-2 rounded-2xl text-sm font-semibold text-white bg-[rgb(var(--re-blue))] hover:opacity-95 transition shadow"
+              >
+                {draft?.savedProjectId ? "Update Project" : "Save Project"}
+              </button>
+
+              <button
+                type="button"
+                onClick={exportPDF}
+                disabled={!calc}
+                className="px-4 py-2 rounded-2xl text-sm font-semibold border border-black/10 bg-white/70 hover:bg-white/90 transition disabled:opacity-50"
+              >
+                Export PDF
+              </button>
+
+              <button
+                type="button"
+                onClick={exportCSV}
+                disabled={!calc}
+                className="px-4 py-2 rounded-2xl text-sm font-semibold border border-black/10 bg-white/70 hover:bg-white/90 transition disabled:opacity-50"
+              >
+                Export Excel (CSV)
+              </button>
+            </div>
+
+            {saveMsg ? (
+              <div className="mt-3 text-sm text-[rgb(var(--re-green))] font-semibold">{saveMsg}</div>
+            ) : (
+              <div className="mt-3 text-xs re-muted">
+                PDF export memakai print dialog browser (pilih “Save as PDF”). Excel export berupa CSV.
+              </div>
+            )}
           </div>
 
           {missing.length > 0 ? (
@@ -234,35 +444,6 @@ export default function NewProjectResultsPage() {
                     ))}
                   </tbody>
                 </table>
-              </div>
-
-              <div className="mt-6 rounded-2xl border border-black/10 bg-white/60 p-5">
-                <div className="text-sm font-semibold text-[rgb(var(--re-blue))]">
-                  Detail per case (per course)
-                </div>
-                <p className="mt-2 text-sm re-muted">
-                  Untuk debugging/review, Anda bisa lihat t_required per design case (sebelum dipilih governing).
-                </p>
-
-                <div className="mt-4 space-y-3">
-                  {calc.results.map((r) => (
-                    <div key={r.courseNo} className="rounded-2xl border border-black/10 bg-white/70 p-4">
-                      <div className="text-sm font-semibold text-[rgb(var(--re-ink))]">
-                        Course {r.courseNo}
-                      </div>
-                      <div className="mt-2 text-sm re-muted">
-                        {Object.entries(r.requiredByCase).map(([k, v]) => (
-                          <div key={k} className="flex items-center justify-between gap-3">
-                            <span>{CASE_NAME[k as DesignCaseKey]}</span>
-                            <span className="font-semibold text-[rgb(var(--re-blue))]">
-                              {fmt(v)} {thkUnit}
-                            </span>
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-                  ))}
-                </div>
               </div>
             </>
           ) : null}
