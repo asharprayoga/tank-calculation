@@ -9,7 +9,6 @@ export default function Home() {
 
   return (
     <main className="min-h-screen re-geo">
-      {/* Background padding biar napas */}
       <div className="mx-auto max-w-6xl px-6 py-10 md:px-10 md:py-14">
         <section className="re-card rounded-[2rem] p-8 md:p-12">
           {/* TOP BAR */}
@@ -47,24 +46,26 @@ export default function Home() {
                            border border-black/10 bg-white/70 hover:bg-white/90 transition"
                 onClick={() =>
                   alert(
-                    "Changelog (coming soon)\n\nNanti bisa isi: versi, perubahan rumus, perbaikan UI, dll."
+                    "Changelog (coming soon)\n\nNanti bisa diisi: versi, perubahan rumus, perbaikan UI, dll."
                   )
                 }
               >
                 Changelog
               </button>
+
               <button
                 type="button"
                 className="px-4 py-2 rounded-2xl text-sm font-semibold
                            border border-black/10 bg-white/70 hover:bg-white/90 transition"
                 onClick={() =>
                   alert(
-                    "Roadmap (coming soon)\n\n• Bottom\n• Roof\n• Wind\n• Seismic\n• Nozzle reinforcement\n• Export PDF/Excel"
+                    "Roadmap (coming soon)\n\n• Shell\n• Bottom\n• Roof\n• Wind\n• Seismic\n• Nozzle reinforcement\n• Export PDF/Excel"
                   )
                 }
               >
                 Roadmap
               </button>
+
               <span className="px-3 py-2 rounded-2xl text-sm font-semibold border border-black/10 bg-white/60 re-muted">
                 Internal RE
               </span>
@@ -73,7 +74,7 @@ export default function Home() {
 
           {/* HERO GRID */}
           <div className="mt-10 grid grid-cols-1 lg:grid-cols-12 gap-8 lg:gap-10">
-            {/* LEFT: Headline + CTA */}
+            {/* LEFT */}
             <div className="lg:col-span-7">
               <div className="text-xs md:text-sm re-muted">Tank design & check</div>
 
@@ -86,13 +87,12 @@ export default function Home() {
                 <span className="text-[rgb(var(--re-ink))]">Web App</span>
               </h1>
 
-              {/* Catchy, general */}
               <p className="mt-6 max-w-2xl text-base md:text-lg re-muted leading-relaxed">
                 Tool cepat untuk <strong>desain & verifikasi tangki API 650</strong> —
-                input ringkas, hasil jelas, dan siap dipakai buat review (SI / US).
+                input ringkas, hasil jelas, dan siap digunakan untuk proses review (SI / US).
               </p>
 
-              {/* Actions */}
+              {/* ACTIONS */}
               <div className="mt-8 flex flex-wrap items-center gap-4">
                 <Link
                   href="/calculator"
@@ -127,7 +127,7 @@ export default function Home() {
                 </button>
               </div>
 
-              {/* Brand dots */}
+              {/* BRAND DOTS */}
               <div className="mt-10 flex items-center gap-3 text-sm re-muted">
                 <span className="h-3 w-3 rounded-full bg-[rgb(var(--re-blue))]" />
                 <span className="h-3 w-3 rounded-full bg-[rgb(var(--re-green))]" />
@@ -136,82 +136,186 @@ export default function Home() {
               </div>
             </div>
 
-            {/* RIGHT: Feature panel biar page keisi */}
+            {/* RIGHT: Bilingual capabilities panel */}
             <div className="lg:col-span-5">
-              <div className="rounded-[1.75rem] border border-black/10 bg-white/55 p-6 md:p-7">
+              <div
+                className="
+                  rounded-[1.75rem]
+                  border border-[rgba(var(--re-blue),0.18)]
+                  bg-[rgba(var(--re-blue),0.04)]
+                  p-6 md:p-7
+                "
+              >
                 <div className="flex items-start justify-between gap-4">
                   <div>
-                    <div className="text-xs re-muted">Highlights</div>
+                    <div className="text-xs re-muted">Sorotan • Highlights</div>
                     <div className="mt-1 text-lg font-semibold text-[rgb(var(--re-ink))]">
-                      Core capabilities
+                      Kapabilitas Utama • Core Capabilities
                     </div>
                   </div>
-                  <div className="px-3 py-1.5 rounded-2xl text-xs font-semibold border border-black/10 bg-white/70 re-muted">
+
+                  <span
+                    className="
+                      px-3 py-1.5 rounded-2xl text-xs font-semibold
+                      border border-[rgba(var(--re-blue),0.30)]
+                      bg-[rgba(var(--re-blue),0.08)]
+                      text-[rgb(var(--re-blue))]
+                    "
+                  >
                     API 650
-                  </div>
+                  </span>
                 </div>
 
                 <div className="mt-5 grid grid-cols-1 gap-3">
-                  <div className="rounded-2xl border border-black/10 bg-white/70 p-4">
+                  {/* Card 1 — Blue tint */}
+                  <div
+                    className="
+                      rounded-2xl
+                      border border-[rgba(var(--re-blue),0.20)]
+                      bg-[rgba(var(--re-blue),0.05)]
+                      p-4
+                    "
+                  >
                     <div className="text-sm font-semibold text-[rgb(var(--re-ink))]">
-                      Unit system
+                      Sistem Satuan (SI / US)
                     </div>
-                    <div className="mt-1 text-sm re-muted">
-                      Pilih SI / US, biar konsisten dari input sampai output.
+                    <div className="mt-1 text-sm re-muted leading-relaxed">
+                      Mendukung sistem satuan SI dan US untuk menjaga konsistensi perhitungan
+                      dari input hingga output.
+                    </div>
+
+                    <div className="mt-3 pt-3 border-t border-[rgba(var(--re-blue),0.18)]">
+                      <div className="text-sm font-semibold text-[rgb(var(--re-ink))]">
+                        Unit System (SI / US)
+                      </div>
+                      <div className="mt-1 text-sm re-muted leading-relaxed">
+                        Supports SI and US units to ensure consistent calculations from input
+                        through output.
+                      </div>
                     </div>
                   </div>
 
-                  <div className="rounded-2xl border border-black/10 bg-white/70 p-4">
+                  {/* Card 2 — Green tint */}
+                  <div
+                    className="
+                      rounded-2xl
+                      border border-[rgba(var(--re-green),0.22)]
+                      bg-[rgba(var(--re-green),0.06)]
+                      p-4
+                    "
+                  >
                     <div className="text-sm font-semibold text-[rgb(var(--re-ink))]">
-                      Per-course verification
+                      Verifikasi per Course
                     </div>
-                    <div className="mt-1 text-sm re-muted">
-                      Output tebal minimum & status OK / NOT OK per course.
+                    <div className="mt-1 text-sm re-muted leading-relaxed">
+                      Menyajikan ketebalan minimum yang dibutuhkan serta status kelulusan
+                      (OK / NOT OK) untuk setiap shell course.
+                    </div>
+
+                    <div className="mt-3 pt-3 border-t border-[rgba(var(--re-green),0.18)]">
+                      <div className="text-sm font-semibold text-[rgb(var(--re-ink))]">
+                        Per-Course Verification
+                      </div>
+                      <div className="mt-1 text-sm re-muted leading-relaxed">
+                        Provides required minimum thickness and pass/fail status (OK / NOT OK)
+                        for each shell course.
+                      </div>
                     </div>
                   </div>
 
-                  <div className="rounded-2xl border border-black/10 bg-white/70 p-4">
+                  {/* Card 3 — Orange tint */}
+                  <div
+                    className="
+                      rounded-2xl
+                      border border-[rgba(var(--re-orange),0.25)]
+                      bg-[rgba(var(--re-orange),0.06)]
+                      p-4
+                    "
+                  >
                     <div className="text-sm font-semibold text-[rgb(var(--re-ink))]">
-                      Modular roadmap
+                      Arsitektur Modular
                     </div>
-                    <div className="mt-1 text-sm re-muted">
-                      Shell → Bottom → Roof → Wind → Seismic → Nozzle (bertahap).
+                    <div className="mt-1 text-sm re-muted leading-relaxed">
+                      Dikembangkan dengan pendekatan modular: Shell → Bottom → Roof → Wind →
+                      Seismic → Nozzle, sehingga mudah diperluas secara bertahap.
+                    </div>
+
+                    <div className="mt-3 pt-3 border-t border-[rgba(var(--re-orange),0.18)]">
+                      <div className="text-sm font-semibold text-[rgb(var(--re-ink))]">
+                        Modular Architecture
+                      </div>
+                      <div className="mt-1 text-sm re-muted leading-relaxed">
+                        Built with a modular approach: Shell → Bottom → Roof → Wind → Seismic →
+                        Nozzle, making it easy to extend incrementally.
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Quick Note — Blue/neutral tint */}
+                  <div
+                    className="
+                      rounded-2xl
+                      border border-[rgba(var(--re-blue),0.18)]
+                      bg-[rgba(var(--re-blue),0.035)]
+                      p-4
+                    "
+                  >
+                    <div className="text-sm font-semibold text-[rgb(var(--re-ink))]">
+                      Catatan Implementasi
+                    </div>
+                    <div className="mt-1 text-sm re-muted leading-relaxed">
+                      Perhitungan dimulai dari modul Shell. Modul lainnya telah disiapkan
+                      secara struktural agar dapat ditambahkan tanpa perubahan besar pada antarmuka.
+                    </div>
+
+                    <div className="mt-3 pt-3 border-t border-[rgba(var(--re-blue),0.16)]">
+                      <div className="text-sm font-semibold text-[rgb(var(--re-ink))]">
+                        Implementation Note
+                      </div>
+                      <div className="mt-1 text-sm re-muted leading-relaxed">
+                        Calculations start from the Shell module. Other modules are structurally
+                        prepared to be added without major UI changes.
+                      </div>
                     </div>
                   </div>
                 </div>
 
-                <div className="mt-6 rounded-2xl border border-black/10 bg-white/60 p-4">
-                  <div className="text-xs re-muted">Quick note</div>
-                  <div className="mt-1 text-sm re-muted leading-relaxed">
-                    Mulai dari <strong>Shell</strong> dulu. Modul lain disiapin biar nanti tinggal
-                    “colok” rumus/clause tanpa bongkar UI.
-                  </div>
-                </div>
-
+                {/* Bottom buttons */}
                 <div className="mt-6 flex flex-wrap gap-2">
                   <button
                     type="button"
-                    className="px-4 py-2 rounded-2xl text-sm font-semibold
-                               border border-black/10 bg-white/70 hover:bg-white/90 transition"
+                    className="
+                      px-4 py-2 rounded-2xl text-sm font-semibold
+                      border border-[rgba(var(--re-blue),0.22)]
+                      bg-[rgba(var(--re-blue),0.06)]
+                      hover:bg-[rgba(var(--re-blue),0.10)]
+                      transition
+                    "
                     onClick={() =>
                       alert(
-                        "Dokumentasi (coming soon)\n\nNanti bisa isi: clause reference, asumsi, definisi simbol, contoh kasus."
+                        "Dokumentasi Teknis / Technical Documentation (coming soon)\n\nNanti bisa diisi: clause reference, asumsi, definisi simbol, contoh kasus."
                       )
                     }
                   >
-                    Dokumentasi
+                    Dokumentasi Teknis • Technical Documentation
                   </button>
+
                   <button
                     type="button"
-                    className="px-4 py-2 rounded-2xl text-sm font-semibold
-                               border border-black/10 bg-white/70 hover:bg-white/90 transition"
+                    className="
+                      px-4 py-2 rounded-2xl text-sm font-semibold
+                      border border-[rgba(var(--re-green),0.22)]
+                      bg-[rgba(var(--re-green),0.07)]
+                      hover:bg-[rgba(var(--re-green),0.12)]
+                      transition
+                    "
                     onClick={() =>
                       alert(
-                        "Support (coming soon)\n\nNanti bisa isi: cara lapor bug, request fitur, dll."
+                        "Bantuan & Dukungan / Help & Support (coming soon)\n\nNanti bisa diisi: cara lapor bug, request fitur, kontak PIC, dsb."
                       )
                     }
                   >
-                    Support
+                    Bantuan & Dukungan • Help & Support
                   </button>
                 </div>
               </div>
@@ -220,7 +324,7 @@ export default function Home() {
         </section>
       </div>
 
-      {/* INFO MODAL */}
+      {/* ABOUT MODAL */}
       {openInfo ? (
         <div
           className="fixed inset-0 z-50 flex items-center justify-center p-4"
@@ -230,47 +334,43 @@ export default function Home() {
           onClick={() => setOpenInfo(false)}
         >
           <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" />
+
           <div
             className="relative w-full max-w-lg rounded-3xl re-card p-6 md:p-7 border border-black/10 shadow-xl"
             onClick={(e) => e.stopPropagation()}
           >
             <div className="flex items-start justify-between gap-4">
               <div>
-                <div className="text-xs re-muted">Tentang</div>
+                <div className="text-xs re-muted">Tentang • About</div>
                 <div className="mt-1 text-lg font-semibold text-[rgb(var(--re-ink))]">
                   TankCalc (API 650)
                 </div>
               </div>
+
               <button
                 type="button"
                 className="px-3 py-2 rounded-2xl text-sm font-semibold border border-black/10 bg-white/70 hover:bg-white/90 transition"
                 onClick={() => setOpenInfo(false)}
               >
-                Tutup
+                Tutup • Close
               </button>
             </div>
 
             <div className="mt-4 text-sm re-muted leading-relaxed">
-              TankCalc adalah platform kalkulator untuk kebutuhan desain/cek tangki sesuai API 650.
-              Targetnya: input cepat, hasil jelas, dan struktur modular buat pengembangan fitur lanjutan.
-            </div>
-
-            <div className="mt-5 grid grid-cols-1 sm:grid-cols-2 gap-3 text-sm">
-              <div className="rounded-2xl border border-black/10 bg-white/55 p-4">
-                <div className="text-xs re-muted">Saat ini</div>
-                <ul className="mt-2 space-y-1 re-muted">
-                  <li>• Unit SI / US</li>
-                  <li>• Output per course + OK/NOT OK</li>
-                  <li>• Struktur modul siap</li>
-                </ul>
+              <div className="font-semibold text-[rgb(var(--re-ink))]">
+                Bahasa Indonesia
               </div>
-              <div className="rounded-2xl border border-black/10 bg-white/55 p-4">
-                <div className="text-xs re-muted">Next</div>
-                <ul className="mt-2 space-y-1 re-muted">
-                  <li>• Wind / Seismic</li>
-                  <li>• Bottom / Roof</li>
-                  <li>• Export PDF/Excel</li>
-                </ul>
+              <div className="mt-1">
+                TankCalc adalah platform kalkulator untuk kebutuhan desain/cek tangki sesuai API 650.
+                Targetnya: input cepat, hasil jelas, dan struktur modular untuk pengembangan fitur lanjutan.
+              </div>
+
+              <div className="mt-4 font-semibold text-[rgb(var(--re-ink))]">
+                English
+              </div>
+              <div className="mt-1">
+                TankCalc is a calculation platform for API 650 tank design/check workflows.
+                The goal is fast input, clear output, and a modular structure to support future enhancements.
               </div>
             </div>
           </div>
