@@ -14,7 +14,7 @@ export default function Home() {
           {/* TOP BAR */}
           <div className="flex flex-col gap-6 lg:flex-row lg:items-center lg:justify-between">
             <div className="flex items-center gap-6">
-              {/* LOGO — jangan diubah */}
+              {/* LOGO (JANGAN DIUBAH) */}
               <div className="shrink-0">
                 <div className="h-16 w-44 md:h-20 md:w-56 rounded-3xl bg-white/90 border border-black/10 shadow-sm flex items-center justify-center px-3">
                   <Image
@@ -63,7 +63,7 @@ export default function Home() {
 
           {/* GRID */}
           <div className="mt-10 grid grid-cols-1 lg:grid-cols-12 gap-8 lg:gap-10">
-            {/* LEFT */}
+            {/* LEFT (Glass) */}
             <div className="lg:col-span-7 re-card rounded-[2rem] p-8 md:p-10">
               <div className="text-xs md:text-sm re-muted">
                 Desain & verifikasi tangki
@@ -85,6 +85,7 @@ export default function Home() {
                 untuk proses review (SI / US).
               </p>
 
+              {/* ACTIONS */}
               <div className="mt-8 flex flex-wrap items-center gap-4">
                 <Link
                   href="/calculator"
@@ -111,6 +112,7 @@ export default function Home() {
                 </button>
               </div>
 
+              {/* BRAND DOTS */}
               <div className="mt-10 flex items-center gap-3 text-sm re-muted">
                 <span className="h-3 w-3 rounded-full bg-[rgb(var(--re-blue))]" />
                 <span className="h-3 w-3 rounded-full bg-[rgb(var(--re-green))]" />
@@ -119,7 +121,7 @@ export default function Home() {
               </div>
             </div>
 
-            {/* RIGHT */}
+            {/* RIGHT (Colored panel) */}
             <div className="lg:col-span-5">
               <div className="re-right p-6 md:p-7">
                 <div className="re-right-content">
@@ -131,7 +133,7 @@ export default function Home() {
                       </div>
                     </div>
 
-                    <span className="px-3 py-1.5 rounded-2xl text-xs font-semibold border border-black/10 bg-white/75">
+                    <span className="px-3 py-1.5 rounded-2xl text-xs font-semibold border border-black/10 bg-white/80">
                       API 650
                     </span>
                   </div>
@@ -177,7 +179,7 @@ export default function Home() {
                   <div className="mt-6 flex flex-wrap gap-2">
                     <button
                       type="button"
-                      className="px-4 py-2 rounded-2xl text-sm font-semibold border border-black/10 bg-white/75 hover:bg-white/95 transition"
+                      className="px-4 py-2 rounded-2xl text-sm font-semibold border border-black/10 bg-white/85 hover:bg-white transition"
                       onClick={() => alert("Dokumentasi Teknis (coming soon)")}
                     >
                       Dokumentasi Teknis
@@ -185,7 +187,7 @@ export default function Home() {
 
                     <button
                       type="button"
-                      className="px-4 py-2 rounded-2xl text-sm font-semibold border border-black/10 bg-white/75 hover:bg-white/95 transition"
+                      className="px-4 py-2 rounded-2xl text-sm font-semibold border border-black/10 bg-white/85 hover:bg-white transition"
                       onClick={() => alert("Bantuan & Dukungan (coming soon)")}
                     >
                       Bantuan & Dukungan
@@ -219,7 +221,7 @@ export default function Home() {
 
               <button
                 type="button"
-                className="px-3 py-2 rounded-2xl text-sm font-semibold border border-black/10 bg-white/75 hover:bg-white/95 transition"
+                className="px-3 py-2 rounded-2xl text-sm font-semibold border border-black/10 bg-white/85 hover:bg-white transition"
                 onClick={() => setOpenInfo(false)}
               >
                 Tutup
