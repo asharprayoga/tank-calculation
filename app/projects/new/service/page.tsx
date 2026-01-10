@@ -40,11 +40,13 @@ function StepPill({
     state === "done"
       ? "bg-white/85 text-[rgb(var(--re-green))]"
       : state === "active"
-        ? "bg-white shadow-sm text-[rgb(var(--re-blue))]"
-        : "bg-white/60 re-muted";
+      ? "bg-white shadow-sm text-[rgb(var(--re-blue))]"
+      : "bg-white/60 re-muted";
 
   return (
-    <span className={`px-3 py-1.5 rounded-2xl text-xs font-semibold border border-black/10 ${cls}`}>
+    <span
+      className={`px-3 py-1.5 rounded-2xl text-xs font-semibold border border-black/10 ${cls}`}
+    >
       {label}
     </span>
   );
@@ -72,7 +74,9 @@ function Modal({
         onClick={(e) => e.stopPropagation()}
       >
         <div className="flex items-start justify-between gap-4">
-          <div className="text-lg font-semibold text-[rgb(var(--re-blue))]">{title}</div>
+          <div className="text-lg font-semibold text-[rgb(var(--re-blue))]">
+            {title}
+          </div>
           <button
             type="button"
             className="px-3 py-2 rounded-2xl text-sm font-semibold border border-black/10 bg-white/85 hover:bg-white transition"
@@ -87,7 +91,9 @@ function Modal({
         </div>
 
         <div className="mt-3 text-xs re-muted leading-relaxed">
-          Catatan: gambar tabel ini hanya referensi internal untuk pemilihan dimensi tipikal. Verifikasi desain tetap mengacu pada dokumen API 650/620 edisi yang dipakai.
+          Catatan: gambar tabel ini hanya referensi internal untuk pemilihan
+          dimensi tipikal. Verifikasi desain tetap mengacu pada dokumen API
+          650/620 edisi yang dipakai.
         </div>
       </div>
     </div>
@@ -96,17 +102,41 @@ function Modal({
 
 const toNumberOrNaN = (s: string) => {
   if (s.trim() === "") return NaN;
-  const n = Number(s);
+  // izinkan koma sebagai desimal
+  const normalized = s.replace(",", ".");
+  const n = Number(normalized);
   return Number.isFinite(n) ? n : NaN;
+};
+
+// helper input decimal yang ramah UX (boleh kosong, boleh koma)
+const sanitizeDecimalText = (raw: string) => {
+  // izinkan angka, koma, titik, minus (kalau suatu saat butuh)
+  const cleaned = raw.replace(/[^0-9.,-]/g, "");
+  return cleaned;
 };
 
 const CASE_LABEL: Record<DesignCaseKey, { title: string; hint: string }> = {
   operating: { title: "Operating", hint: "Kondisi operasi normal." },
-  hydrotest: { title: "Hydrotest", hint: "Uji hidrostatik (umumnya lebih tinggi dari operating)." },
-  empty_wind: { title: "Empty + Wind", hint: "Empty/minimum level terhadap angin (stabilitas)." },
-  empty_seismic: { title: "Empty + Seismic", hint: "Empty/minimum level terhadap gempa (uplift/overturning)." },
-  vacuum: { title: "Vacuum / External", hint: "Case khusus vacuum/external pressure (stability check)." },
-  steamout: { title: "Steam-out / Cleaning", hint: "Case khusus operasi abnormal/pembersihan." },
+  hydrotest: {
+    title: "Hydrotest",
+    hint: "Uji hidrostatik (umumnya lebih tinggi dari operating).",
+  },
+  empty_wind: {
+    title: "Empty + Wind",
+    hint: "Empty/minimum level terhadap angin (stabilitas).",
+  },
+  empty_seismic: {
+    title: "Empty + Seismic",
+    hint: "Empty/minimum level terhadap gempa (uplift/overturning).",
+  },
+  vacuum: {
+    title: "Vacuum / External",
+    hint: "Case khusus vacuum/external pressure (stability check).",
+  },
+  steamout: {
+    title: "Steam-out / Cleaning",
+    hint: "Case khusus operasi abnormal/pembersihan.",
+  },
 };
 
 function getActiveCases(draft: ProjectDraft): DesignCaseKey[] {
@@ -135,9 +165,13 @@ export default function NewProjectServicePage() {
   // ===== Service =====
   const [storedProduct, setStoredProduct] = useState("");
   const [sg, setSg] = useState<string>("1");
-  const [ca, setCa] = useState<string>("2");
 
-  const [liquidHeights, setLiquidHeights] = useState<Record<DesignCaseKey, string>>({
+  // CA dibuat text supaya nilai "0" bisa dihapus dan tidak mental balik
+  const [caText, setCaText] = useState<string>("2");
+
+  const [liquidHeights, setLiquidHeights] = useState<
+    Record<DesignCaseKey, string>
+  >({
     operating: "",
     hydrotest: "",
     empty_wind: "0",
@@ -161,10 +195,10 @@ export default function NewProjectServicePage() {
     if (d) {
       // defaults by units
       if (d.units === "US") {
-        setCa("0.125");
+        setCaText("0.125");
         setPresetKey("US_72");
       } else {
-        setCa("2");
+        setCaText("2");
         setPresetKey("SI_1800");
       }
 
@@ -172,7 +206,11 @@ export default function NewProjectServicePage() {
       if (d.service) {
         setStoredProduct(d.service.storedProduct ?? "");
         setSg(String(d.service.specificGravity ?? 1));
-        setCa(String(d.service.corrosionAllowance ?? (d.units === "SI" ? 2 : 0.125)));
+        setCaText(
+          String(
+            d.service.corrosionAllowance ?? (d.units === "SI" ? 2 : 0.125)
+          )
+        );
 
         setLiquidHeights((prev) => {
           const next = { ...prev };
@@ -187,8 +225,10 @@ export default function NewProjectServicePage() {
       // hydrate geometry
       if (d.geometry) {
         setGeomMode(d.geometry.inputMode ?? "capacity");
-        if (d.geometry.targetCapacity !== undefined) setTargetCapacity(String(d.geometry.targetCapacity));
-        if (d.geometry.presetKey) setPresetKey(d.geometry.presetKey as CoursePresetKey);
+        if (d.geometry.targetCapacity !== undefined)
+          setTargetCapacity(String(d.geometry.targetCapacity));
+        if (d.geometry.presetKey)
+          setPresetKey(d.geometry.presetKey as CoursePresetKey);
 
         setDiameterSel(String(d.geometry.diameter ?? ""));
         const inferred = inferPresetKeyFromCourses(d.units, d.geometry.courses ?? []);
@@ -224,7 +264,10 @@ export default function NewProjectServicePage() {
 
   const lengthUnit = useMemo(() => (draft?.units === "US" ? "ft" : "m"), [draft]);
   const caUnit = useMemo(() => (draft?.units === "US" ? "in" : "mm"), [draft]);
-  const capUnitLabel = useMemo(() => (draft?.units === "US" ? "barrels (bbl)" : "m³"), [draft]);
+  const capUnitLabel = useMemo(
+    () => (draft?.units === "US" ? "barrels (bbl)" : "m³"),
+    [draft]
+  );
 
   const diameters = useMemo(() => {
     if (!draft) return [];
@@ -264,7 +307,6 @@ export default function NewProjectServicePage() {
     const target = toNumberOrNaN(targetCapacity);
     if (!Number.isFinite(target) || target <= 0) return null;
 
-    // generate candidates from grid (diameter list + height options)
     const candidates: Recommendation[] = [];
     for (const D of diameters) {
       for (const opt of heightOptions) {
@@ -291,16 +333,13 @@ export default function NewProjectServicePage() {
     const ceil = candidates.find((c) => c.capacity >= target);
     if (ceil) return ceil;
 
-    // kalau target lebih besar dari semua opsi, kasih max available
     const max = candidates[candidates.length - 1];
     return { ...max, hit: "MAX" };
   }, [draft, preset, geomMode, targetCapacity, diameters, heightOptions]);
 
-  // AUTO-APPLY rekomendasi (sesuai request “otomatis kasih rekomendasi D/H/#course”)
   useEffect(() => {
     if (geomMode !== "capacity") return;
     if (!recommendation) return;
-
     setDiameterSel(String(recommendation.diameter));
     setCourseCountSel(String(recommendation.courses));
   }, [geomMode, recommendation]);
@@ -326,14 +365,18 @@ export default function NewProjectServicePage() {
     const w: string[] = [];
 
     if (draft?.recommendedStandard === "API_620") {
-      w.push("Project terdeteksi API 620. Geometry tipikal di step ini tetap boleh dipakai sebagai starting point, tapi tabel tipikal ini berasal dari API 650 (reference).");
+      w.push(
+        "Project terdeteksi API 620. Geometry tipikal di step ini tetap boleh dipakai sebagai starting point, tapi tabel tipikal ini berasal dari API 650 (reference)."
+      );
     }
 
     if (Number.isFinite(shellHeight)) {
       for (const k of activeCases) {
         const lh = toNumberOrNaN(liquidHeights[k] ?? "");
         if (Number.isFinite(lh) && lh > shellHeight + 1e-6) {
-          w.push(`Liquid height case ${CASE_LABEL[k].title} lebih besar dari shell height. Periksa input.`);
+          w.push(
+            `Liquid height case ${CASE_LABEL[k].title} lebih besar dari shell height. Periksa input.`
+          );
         }
       }
     }
@@ -348,7 +391,7 @@ export default function NewProjectServicePage() {
     const sgN = toNumberOrNaN(sg);
     if (!Number.isFinite(sgN) || sgN <= 0) e.push("Specific gravity (SG) wajib diisi dan > 0.");
 
-    const caN = toNumberOrNaN(ca);
+    const caN = toNumberOrNaN(caText);
     if (!Number.isFinite(caN) || caN < 0) e.push("Corrosion allowance (CA) wajib diisi dan ≥ 0.");
 
     const D = toNumberOrNaN(diameterSel);
@@ -363,34 +406,48 @@ export default function NewProjectServicePage() {
     if (!courseCountSel.trim()) e.push("Tank height / jumlah course wajib dipilih/terdefinisi.");
     if (!Number.isFinite(shellHeight) || shellHeight <= 0) e.push("Shell height tidak valid.");
 
-    // capacity mode: capacity wajib diisi
     if (geomMode === "capacity") {
       const tcap = toNumberOrNaN(targetCapacity);
-      if (!Number.isFinite(tcap) || tcap <= 0) e.push(`Target capacity wajib diisi (angka > 0, unit: ${capUnitLabel}).`);
+      if (!Number.isFinite(tcap) || tcap <= 0)
+        e.push(`Target capacity wajib diisi (angka > 0, unit: ${capUnitLabel}).`);
     }
 
-    // liquid heights wajib minimal operating/hydrotest jika case aktif
     if (draft) {
       const act = getActiveCases(draft);
       if (act.includes("operating")) {
         const op = toNumberOrNaN(liquidHeights.operating);
-        if (!Number.isFinite(op) || op < 0) e.push("Liquid height untuk Operating wajib diisi (angka ≥ 0).");
+        if (!Number.isFinite(op) || op < 0)
+          e.push("Liquid height untuk Operating wajib diisi (angka ≥ 0).");
       }
       if (act.includes("hydrotest")) {
         const ht = toNumberOrNaN(liquidHeights.hydrotest);
-        if (!Number.isFinite(ht) || ht < 0) e.push("Liquid height untuk Hydrotest wajib diisi (angka ≥ 0).");
+        if (!Number.isFinite(ht) || ht < 0)
+          e.push("Liquid height untuk Hydrotest wajib diisi (angka ≥ 0).");
       }
       for (const k of act) {
         const sVal = liquidHeights[k];
         if (sVal.trim() !== "") {
           const nVal = toNumberOrNaN(sVal);
-          if (!Number.isFinite(nVal) || nVal < 0) e.push(`Liquid height untuk ${CASE_LABEL[k].title} harus angka ≥ 0.`);
+          if (!Number.isFinite(nVal) || nVal < 0)
+            e.push(`Liquid height untuk ${CASE_LABEL[k].title} harus angka ≥ 0.`);
         }
       }
     }
 
     return e;
-  }, [draft, sg, ca, diameterSel, preset, courseCountSel, shellHeight, geomMode, targetCapacity, capUnitLabel, liquidHeights]);
+  }, [
+    draft,
+    sg,
+    caText,
+    diameterSel,
+    preset,
+    courseCountSel,
+    shellHeight,
+    geomMode,
+    targetCapacity,
+    capUnitLabel,
+    liquidHeights,
+  ]);
 
   const canContinue = hydrated && errors.length === 0;
 
@@ -398,7 +455,7 @@ export default function NewProjectServicePage() {
     if (!draft || !canContinue || !preset) return;
 
     const sgN = toNumberOrNaN(sg);
-    const caN = toNumberOrNaN(ca);
+    const caN = toNumberOrNaN(caText);
     const D = toNumberOrNaN(diameterSel);
 
     const act = getActiveCases(draft);
@@ -451,7 +508,9 @@ export default function NewProjectServicePage() {
       <main className="min-h-screen re-geo">
         <div className="mx-auto max-w-6xl px-6 py-10 md:px-10 md:py-14">
           <div className="re-card rounded-[2rem] p-7 md:p-9">
-            <div className="text-sm text-red-600 font-semibold">Draft project tidak ditemukan.</div>
+            <div className="text-sm text-red-600 font-semibold">
+              Draft project tidak ditemukan.
+            </div>
             <div className="mt-4">
               <Link
                 href="/projects/new"
@@ -519,16 +578,21 @@ export default function NewProjectServicePage() {
             </h1>
 
             <p className="mt-2 text-sm md:text-base re-muted leading-relaxed">
-              Geometri tank diturunkan dari grid tipikal (diameter + jumlah course). Mode <strong>Capacity</strong> akan memilih kombinasi terdekat dengan pendekatan ke atas.
+              Geometri tank diturunkan dari grid tipikal (diameter + jumlah course).
+              Mode <strong>Capacity</strong> akan memilih kombinasi terdekat dengan pendekatan ke atas.
             </p>
 
             {/* SERVICE */}
             <div className="mt-7 rounded-2xl border border-black/10 bg-white/60 p-5">
-              <div className="text-sm font-semibold text-[rgb(var(--re-blue))]">Service (Fluida)</div>
+              <div className="text-sm font-semibold text-[rgb(var(--re-blue))]">
+                Service (Fluida)
+              </div>
 
               <div className="mt-4 grid grid-cols-1 md:grid-cols-2 gap-4">
                 <label className="block">
-                  <div className="text-sm font-semibold text-[rgb(var(--re-ink))]">Stored product (opsional)</div>
+                  <div className="text-sm font-semibold text-[rgb(var(--re-ink))]">
+                    Stored product (opsional)
+                  </div>
                   <input
                     value={storedProduct}
                     onChange={(e) => setStoredProduct(e.target.value)}
@@ -538,7 +602,9 @@ export default function NewProjectServicePage() {
                 </label>
 
                 <label className="block">
-                  <div className="text-sm font-semibold text-[rgb(var(--re-ink))]">Specific gravity (SG) *</div>
+                  <div className="text-sm font-semibold text-[rgb(var(--re-ink))]">
+                    Specific gravity (SG) *
+                  </div>
                   <input
                     type="number"
                     inputMode="decimal"
@@ -551,15 +617,19 @@ export default function NewProjectServicePage() {
                 </label>
 
                 <label className="block">
-                  <div className="text-sm font-semibold text-[rgb(var(--re-ink))]}>
+                  <div className="text-sm font-semibold text-[rgb(var(--re-ink))]">
                     Corrosion allowance (CA) * ({caUnit})
                   </div>
+
+                  {/* pakai text + inputMode supaya 0 bisa dihapus */}
                   <input
-                    type="number"
+                    type="text"
                     inputMode="decimal"
-                    step="any"
-                    value={ca}
-                    onChange={(e) => setCa(e.target.value)}
+                    value={caText}
+                    onChange={(e) => setCaText(sanitizeDecimalText(e.target.value))}
+                    onBlur={() => {
+                      if (caText.trim() === "") setCaText("0");
+                    }}
                     placeholder={draft.units === "US" ? "Contoh: 0.125" : "Contoh: 2"}
                     className="mt-2 w-full rounded-2xl border border-black/10 bg-white/90 px-4 py-3 text-sm outline-none focus:ring-2 focus:ring-black/10"
                   />
@@ -571,9 +641,12 @@ export default function NewProjectServicePage() {
             <div className="mt-6 rounded-2xl border border-black/10 bg-white/60 p-5">
               <div className="flex flex-wrap items-center justify-between gap-3">
                 <div>
-                  <div className="text-sm font-semibold text-[rgb(var(--re-blue))]">Geometry (berdasarkan tabel tipikal)</div>
+                  <div className="text-sm font-semibold text-[rgb(var(--re-blue))]">
+                    Geometry (berdasarkan tabel tipikal)
+                  </div>
                   <div className="mt-1 text-sm re-muted">
-                    Mode Capacity: input capacity → sistem pilih D/H/courses (ceil). Mode Manual: pilih sendiri dari grid.
+                    Mode Capacity: input capacity → sistem pilih D/H/courses (ceil).
+                    Mode Manual: pilih sendiri dari grid.
                   </div>
                 </div>
 
@@ -620,7 +693,9 @@ export default function NewProjectServicePage() {
               <div className="mt-4 grid grid-cols-1 md:grid-cols-2 gap-4">
                 {/* Preset */}
                 <label className="block">
-                  <div className="text-sm font-semibold text-[rgb(var(--re-ink))]">Typical course height *</div>
+                  <div className="text-sm font-semibold text-[rgb(var(--re-ink))]">
+                    Typical course height *
+                  </div>
                   <select
                     value={presetKey}
                     onChange={(e) => {
@@ -640,7 +715,7 @@ export default function NewProjectServicePage() {
                 {/* CAPACITY INPUT */}
                 {geomMode === "capacity" ? (
                   <label className="block">
-                    <div className="text-sm font-semibold text-[rgb(var(--re-ink))]}>
+                    <div className="text-sm font-semibold text-[rgb(var(--re-ink))]">
                       Target capacity * ({capUnitLabel})
                     </div>
                     <input
@@ -660,20 +735,21 @@ export default function NewProjectServicePage() {
                   <div className="rounded-2xl border border-black/10 bg-white/70 p-4">
                     <div className="text-sm font-semibold text-[rgb(var(--re-blue))]">Tip</div>
                     <div className="mt-2 text-sm re-muted">
-                      Kalau lo mau auto pilih D/H dari target kapasitas, pindah ke <strong>Mode: Capacity</strong>.
+                      Kalau lo mau auto pilih D/H dari target kapasitas, pindah ke{" "}
+                      <strong>Mode: Capacity</strong>.
                     </div>
                   </div>
                 )}
 
                 {/* Diameter */}
                 <label className="block">
-                  <div className="text-sm font-semibold text-[rgb(var(--re-ink))]}>
+                  <div className="text-sm font-semibold text-[rgb(var(--re-ink))]">
                     Diameter tank (D) * ({lengthUnit})
                   </div>
                   <select
                     value={diameterSel}
                     onChange={(e) => setDiameterSel(e.target.value)}
-                    disabled={geomMode === "capacity" && Boolean(recommendation)} // auto
+                    disabled={geomMode === "capacity" && Boolean(recommendation)}
                     className="mt-2 w-full rounded-2xl border border-black/10 bg-white/90 px-4 py-3 text-sm outline-none focus:ring-2 focus:ring-black/10 disabled:opacity-60"
                   >
                     <option value="">Pilih diameter...</option>
@@ -684,13 +760,15 @@ export default function NewProjectServicePage() {
                     ))}
                   </select>
                   {geomMode === "capacity" && recommendation ? (
-                    <div className="mt-2 text-xs re-muted">Di mode Capacity, diameter dipilih otomatis dari rekomendasi.</div>
+                    <div className="mt-2 text-xs re-muted">
+                      Di mode Capacity, diameter dipilih otomatis dari rekomendasi.
+                    </div>
                   ) : null}
                 </label>
 
                 {/* Height / courses */}
                 <label className="block md:col-span-2">
-                  <div className="text-sm font-semibold text-[rgb(var(--re-ink))]}>
+                  <div className="text-sm font-semibold text-[rgb(var(--re-ink))]">
                     Tank height / jumlah course * ({lengthUnit})
                   </div>
                   <select
@@ -707,7 +785,9 @@ export default function NewProjectServicePage() {
                     ))}
                   </select>
                   {geomMode === "capacity" && recommendation ? (
-                    <div className="mt-2 text-xs re-muted">Di mode Capacity, jumlah course dipilih otomatis dari rekomendasi.</div>
+                    <div className="mt-2 text-xs re-muted">
+                      Di mode Capacity, jumlah course dipilih otomatis dari rekomendasi.
+                    </div>
                   ) : null}
                 </label>
               </div>
@@ -715,12 +795,18 @@ export default function NewProjectServicePage() {
               {/* RECOMMENDATION CARD */}
               {geomMode === "capacity" && recommendation ? (
                 <div className="mt-5 rounded-2xl border border-black/10 bg-white/70 p-4">
-                  <div className="text-sm font-semibold text-[rgb(var(--re-blue))]">Rekomendasi (ceil)</div>
+                  <div className="text-sm font-semibold text-[rgb(var(--re-blue))]">
+                    Rekomendasi (ceil)
+                  </div>
                   <div className="mt-2 text-sm re-muted leading-relaxed">
-                    <div><strong className="text-[rgb(var(--re-ink))]">Target:</strong> {formatCapacity(draft.units, toNumberOrNaN(targetCapacity))}</div>
+                    <div>
+                      <strong className="text-[rgb(var(--re-ink))]">Target:</strong>{" "}
+                      {formatCapacity(draft.units, toNumberOrNaN(targetCapacity))}
+                    </div>
                     <div>
                       <strong className="text-[rgb(var(--re-ink))]">Dipilih:</strong>{" "}
-                      D = {recommendation.diameter} {lengthUnit}, H = {recommendation.shellHeight} {lengthUnit}, courses = {recommendation.courses}
+                      D = {recommendation.diameter} {lengthUnit}, H = {recommendation.shellHeight} {lengthUnit}, courses ={" "}
+                      {recommendation.courses}
                     </div>
                     <div>
                       <strong className="text-[rgb(var(--re-ink))]">Nominal capacity:</strong>{" "}
@@ -741,10 +827,22 @@ export default function NewProjectServicePage() {
               <div className="mt-5 rounded-2xl border border-black/10 bg-white/70 p-4">
                 <div className="text-sm font-semibold text-[rgb(var(--re-blue))]">Preview geometry</div>
                 <div className="mt-2 text-sm re-muted leading-relaxed">
-                  <div><strong className="text-[rgb(var(--re-ink))]">D:</strong> {diameterSel ? `${diameterSel} ${lengthUnit}` : "-"}</div>
-                  <div><strong className="text-[rgb(var(--re-ink))]">Hshell:</strong> {Number.isFinite(shellHeight) ? `${shellHeight} ${lengthUnit}` : "-"}</div>
-                  <div><strong className="text-[rgb(var(--re-ink))]">Jumlah course:</strong> {Number.isFinite(selectedCourseCount) ? selectedCourseCount : "-"}</div>
-                  <div><strong className="text-[rgb(var(--re-ink))]">Course height:</strong> {preset ? `${preset.courseHeight} ${lengthUnit}` : "-"}</div>
+                  <div>
+                    <strong className="text-[rgb(var(--re-ink))]">D:</strong>{" "}
+                    {diameterSel ? `${diameterSel} ${lengthUnit}` : "-"}
+                  </div>
+                  <div>
+                    <strong className="text-[rgb(var(--re-ink))]">Hshell:</strong>{" "}
+                    {Number.isFinite(shellHeight) ? `${shellHeight} ${lengthUnit}` : "-"}
+                  </div>
+                  <div>
+                    <strong className="text-[rgb(var(--re-ink))]">Jumlah course:</strong>{" "}
+                    {Number.isFinite(selectedCourseCount) ? selectedCourseCount : "-"}
+                  </div>
+                  <div>
+                    <strong className="text-[rgb(var(--re-ink))]">Course height:</strong>{" "}
+                    {preset ? `${preset.courseHeight} ${lengthUnit}` : "-"}
+                  </div>
                   <div className="mt-2">
                     <strong className="text-[rgb(var(--re-ink))]">Nominal capacity (selected):</strong>{" "}
                     {Number.isFinite(currentCapacity) ? formatCapacity(draft.units, currentCapacity) : "-"}
@@ -762,7 +860,7 @@ export default function NewProjectServicePage() {
             {/* CASE HEIGHTS */}
             <div className="mt-6 rounded-2xl border border-black/10 bg-white/60 p-5">
               <div className="flex flex-wrap items-center justify-between gap-3">
-                <div className="text-sm font-semibold text-[rgb(var(--re-blue))]}>
+                <div className="text-sm font-semibold text-[rgb(var(--re-blue))]">
                   Liquid height per design case
                 </div>
                 <button
@@ -781,7 +879,9 @@ export default function NewProjectServicePage() {
                     className="flex flex-col md:flex-row md:items-center md:justify-between gap-3 rounded-2xl border border-black/10 bg-white/70 px-4 py-3"
                   >
                     <div className="min-w-0">
-                      <div className="text-sm font-semibold text-[rgb(var(--re-ink))]">{CASE_LABEL[k].title}</div>
+                      <div className="text-sm font-semibold text-[rgb(var(--re-ink))]">
+                        {CASE_LABEL[k].title}
+                      </div>
                       <div className="text-sm re-muted">{CASE_LABEL[k].hint}</div>
                     </div>
 
@@ -854,18 +954,24 @@ export default function NewProjectServicePage() {
           {/* RIGHT SUMMARY */}
           <div className="lg:col-span-5 re-card rounded-[2rem] p-6 md:p-7">
             <div className="text-xs re-muted">Ringkasan</div>
-            <div className="mt-1 text-lg font-semibold text-[rgb(var(--re-blue))]">Project Summary</div>
+            <div className="mt-1 text-lg font-semibold text-[rgb(var(--re-blue))]">
+              Project Summary
+            </div>
 
             <div className="mt-5 rounded-2xl border border-black/10 bg-white/60 p-5 text-sm re-muted leading-relaxed">
-              <div><strong className="text-[rgb(var(--re-ink))]">Project:</strong> {draft.projectName}</div>
-              <div><strong className="text-[rgb(var(--re-ink))]">Units:</strong> {draft.units}</div>
+              <div>
+                <strong className="text-[rgb(var(--re-ink))]">Project:</strong> {draft.projectName}
+              </div>
+              <div>
+                <strong className="text-[rgb(var(--re-ink))]">Units:</strong> {draft.units}
+              </div>
               <div className="mt-2">
                 <strong className="text-[rgb(var(--re-ink))]">Standard (auto):</strong>{" "}
                 {draft.recommendedStandard === "API_650"
                   ? "API 650"
                   : draft.recommendedStandard === "API_620"
-                    ? "API 620"
-                    : "Out-of-scope"}
+                  ? "API 620"
+                  : "Out-of-scope"}
               </div>
 
               <div className="mt-4">
@@ -881,7 +987,7 @@ export default function NewProjectServicePage() {
             </div>
 
             <div className="mt-6 rounded-2xl border border-black/10 bg-white/60 p-4 text-sm re-muted leading-relaxed">
-              Step 3 akan minta: <strong>allowable stress</strong>, <strong>joint efficiency</strong>, dan
+              Step 3 akan minta: <strong>allowable stress</strong>, <strong>joint efficiency</strong>, dan{" "}
               <strong> adopted thickness</strong> per course untuk verifikasi OK/NOT OK.
             </div>
           </div>
