@@ -1,6 +1,4 @@
-@tailwind base;
-@tailwind components;
-@tailwind utilities;
+@import "tailwindcss";
 
 /* ===============================
    Rekayasa Engineering Theme
@@ -57,8 +55,10 @@ html, body {
   align-items: baseline;
   gap: 0.02em;
 }
+
 .re-title .tank { color: rgb(var(--re-blue)); }
 .re-title .calc { color: rgb(var(--re-green)); }
+
 .re-title .dot {
   display: inline-block;
   width: 0.22em;
@@ -71,7 +71,6 @@ html, body {
 
 /* ===============================
    RE Tinted Surfaces (Palette-based)
-   (Biar gak polos putih + pasti muncul)
 ================================ */
 .re-panel-blue{
   background: rgba(var(--re-blue), 0.06);
@@ -98,7 +97,6 @@ html, body {
   border: 1px solid rgba(var(--re-orange), 0.38);
 }
 
-/* Optional: tombol tinted biar lebih “hidup” */
 .re-btn-blue{
   background: rgba(var(--re-blue), 0.07);
   border: 1px solid rgba(var(--re-blue), 0.24);
