@@ -55,10 +55,8 @@ html, body {
   align-items: baseline;
   gap: 0.02em;
 }
-
 .re-title .tank { color: rgb(var(--re-blue)); }
 .re-title .calc { color: rgb(var(--re-green)); }
-
 .re-title .dot {
   display: inline-block;
   width: 0.22em;
@@ -70,33 +68,8 @@ html, body {
 }
 
 /* ===============================
-   RE Tinted Surfaces (Palette-based)
+   Tinted buttons (optional, subtle)
 ================================ */
-.re-panel-blue{
-  background: rgba(var(--re-blue), 0.06);
-  border: 1px solid rgba(var(--re-blue), 0.22);
-}
-
-.re-card-blue{
-  background: rgba(var(--re-blue), 0.08);
-  border: 1px solid rgba(var(--re-blue), 0.24);
-}
-
-.re-card-green{
-  background: rgba(var(--re-green), 0.10);
-  border: 1px solid rgba(var(--re-green), 0.26);
-}
-
-.re-card-orange{
-  background: rgba(var(--re-orange), 0.11);
-  border: 1px solid rgba(var(--re-orange), 0.30);
-}
-
-.re-badge-orange{
-  background: rgba(var(--re-orange), 0.16);
-  border: 1px solid rgba(var(--re-orange), 0.38);
-}
-
 .re-btn-blue{
   background: rgba(var(--re-blue), 0.07);
   border: 1px solid rgba(var(--re-blue), 0.24);
@@ -108,3 +81,94 @@ html, body {
   border: 1px solid rgba(var(--re-green), 0.24);
 }
 .re-btn-green:hover{ background: rgba(var(--re-green), 0.13); }
+
+/* ===============================
+   Right Panel: tinted + shapes
+   (biar panel kanan gak polos + ada ornament)
+================================ */
+.re-panel-shapes{
+  position: relative;
+  overflow: hidden;
+  border-radius: 1.75rem;
+  background:
+    radial-gradient(900px 520px at 85% 0%, rgba(var(--re-blue),0.14), transparent 60%),
+    radial-gradient(900px 520px at 0% 90%, rgba(var(--re-green),0.12), transparent 60%),
+    linear-gradient(180deg, rgba(255,255,255,0.55), rgba(255,255,255,0.35));
+  border: 1px solid rgba(15,23,42,0.10);
+  box-shadow: 0 14px 34px rgba(2,8,23,0.08);
+  backdrop-filter: blur(10px);
+}
+
+/* Blob biru */
+.re-panel-shapes::before{
+  content:"";
+  position:absolute;
+  width: 560px;
+  height: 560px;
+  top: -240px;
+  right: -260px;
+  background: radial-gradient(
+    closest-side,
+    rgba(var(--re-blue),0.26),
+    rgba(var(--re-blue),0.00) 72%
+  );
+  pointer-events: none;
+  filter: blur(0px);
+}
+
+/* Blob hijau */
+.re-panel-shapes::after{
+  content:"";
+  position:absolute;
+  width: 560px;
+  height: 560px;
+  bottom: -280px;
+  left: -280px;
+  background: radial-gradient(
+    closest-side,
+    rgba(var(--re-green),0.22),
+    rgba(var(--re-green),0.00) 74%
+  );
+  pointer-events: none;
+}
+
+/* Accent blob orange (elemen shape tambahan) */
+.re-panel-accent{
+  position: absolute;
+  width: 200px;
+  height: 200px;
+  top: 55%;
+  right: -100px;
+  background: radial-gradient(
+    closest-side,
+    rgba(var(--re-orange),0.22),
+    rgba(var(--re-orange),0.00) 72%
+  );
+  pointer-events: none;
+}
+
+/* Grid halus biar "engineering feel" */
+.re-panel-grid{
+  position: absolute;
+  inset: 0;
+  background:
+    linear-gradient(rgba(15,23,42,0.05) 1px, transparent 1px) 0 0 / 28px 28px,
+    linear-gradient(90deg, rgba(15,23,42,0.05) 1px, transparent 1px) 0 0 / 28px 28px;
+  opacity: 0.35;
+  pointer-events: none;
+  mask-image: radial-gradient(circle at 50% 40%, black 40%, transparent 75%);
+}
+
+/* Content di atas shapes */
+.re-panel-content{
+  position: relative;
+  z-index: 1;
+}
+
+/* Card item di dalam panel (glass) */
+.re-panel-item{
+  background: rgba(255,255,255,0.76);
+  border: 1px solid rgba(15,23,42,0.10);
+  box-shadow: 0 10px 22px rgba(2,8,23,0.06);
+  backdrop-filter: blur(8px);
+}
