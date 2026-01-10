@@ -41,8 +41,7 @@ export default function Home() {
             <div className="flex flex-wrap gap-2">
               <button
                 type="button"
-                className="px-4 py-2 rounded-2xl text-sm font-semibold
-                           border border-black/10 bg-white/70 hover:bg-white/90 transition"
+                className="px-4 py-2 rounded-2xl text-sm font-semibold border border-black/10 bg-white/70 hover:bg-white/90 transition"
                 onClick={() =>
                   alert(
                     "Changelog (coming soon)\n\nNanti bisa diisi: versi, perubahan rumus, perbaikan UI, dll."
@@ -54,8 +53,7 @@ export default function Home() {
 
               <button
                 type="button"
-                className="px-4 py-2 rounded-2xl text-sm font-semibold
-                           border border-black/10 bg-white/70 hover:bg-white/90 transition"
+                className="px-4 py-2 rounded-2xl text-sm font-semibold border border-black/10 bg-white/70 hover:bg-white/90 transition"
                 onClick={() =>
                   alert(
                     "Roadmap (coming soon)\n\n• Shell\n• Bottom\n• Roof\n• Wind\n• Seismic\n• Nozzle reinforcement\n• Export PDF/Excel"
@@ -75,7 +73,9 @@ export default function Home() {
           <div className="mt-10 grid grid-cols-1 lg:grid-cols-12 gap-8 lg:gap-10">
             {/* LEFT */}
             <div className="lg:col-span-7">
-              <div className="text-xs md:text-sm re-muted">Desain & verifikasi tangki</div>
+              <div className="text-xs md:text-sm re-muted">
+                Desain & verifikasi tangki
+              </div>
 
               <h1 className="mt-3 text-5xl md:text-6xl lg:text-7xl font-extrabold tracking-tight leading-[1.03]">
                 <span className="re-title">
@@ -88,8 +88,8 @@ export default function Home() {
 
               <p className="mt-6 max-w-2xl text-base md:text-lg re-muted leading-relaxed">
                 Platform kalkulator untuk <strong>perhitungan dan verifikasi desain tangki</strong>{" "}
-                mengacu pada <strong>API 650</strong>—input ringkas, hasil jelas, dan siap untuk proses review
-                (SI / US).
+                mengacu pada <strong>API 650</strong>—input ringkas, hasil jelas, dan siap
+                untuk proses review (SI / US).
               </p>
 
               {/* ACTIONS */}
@@ -104,11 +104,7 @@ export default function Home() {
 
                 <button
                   type="button"
-                  className="px-8 py-4 rounded-2xl text-base md:text-lg font-semibold
-                             border border-[rgba(var(--re-blue),0.22)]
-                             bg-[rgba(var(--re-blue),0.06)]
-                             hover:bg-[rgba(var(--re-blue),0.10)]
-                             transition"
+                  className="px-8 py-4 rounded-2xl text-base md:text-lg font-semibold transition re-btn-blue"
                   onClick={() => setOpenInfo(true)}
                   aria-haspopup="dialog"
                   aria-expanded={openInfo}
@@ -118,11 +114,7 @@ export default function Home() {
 
                 <button
                   type="button"
-                  className="px-8 py-4 rounded-2xl text-base md:text-lg font-semibold
-                             border border-[rgba(var(--re-green),0.22)]
-                             bg-[rgba(var(--re-green),0.07)]
-                             hover:bg-[rgba(var(--re-green),0.12)]
-                             transition"
+                  className="px-8 py-4 rounded-2xl text-base md:text-lg font-semibold transition re-btn-green"
                   onClick={() =>
                     alert(
                       "Template Input (coming soon)\n\nIde: preset parameter umum + contoh pembagian course."
@@ -142,16 +134,9 @@ export default function Home() {
               </div>
             </div>
 
-            {/* RIGHT: Panel ringkas + tinted */}
+            {/* RIGHT: Panel tinted (Indonesia, ringkas) */}
             <div className="lg:col-span-5">
-              <div
-                className="
-                  rounded-[1.75rem]
-                  border border-[rgba(var(--re-blue),0.22)]
-                  bg-[rgba(var(--re-blue),0.05)]
-                  p-6 md:p-7
-                "
-              >
+              <div className="rounded-[1.75rem] p-6 md:p-7 re-panel-blue">
                 <div className="flex items-start justify-between gap-4">
                   <div>
                     <div className="text-xs re-muted">Sorotan</div>
@@ -160,28 +145,13 @@ export default function Home() {
                     </div>
                   </div>
 
-                  <span
-                    className="
-                      px-3 py-1.5 rounded-2xl text-xs font-semibold
-                      border border-[rgba(var(--re-orange),0.35)]
-                      bg-[rgba(var(--re-orange),0.10)]
-                      text-[rgb(var(--re-ink))]
-                    "
-                  >
+                  <span className="px-3 py-1.5 rounded-2xl text-xs font-semibold re-badge-orange">
                     API 650
                   </span>
                 </div>
 
                 <div className="mt-5 grid grid-cols-1 gap-3">
-                  {/* Card 1 */}
-                  <div
-                    className="
-                      rounded-2xl
-                      border border-[rgba(var(--re-blue),0.22)]
-                      bg-[rgba(var(--re-blue),0.06)]
-                      p-4
-                    "
-                  >
+                  <div className="rounded-2xl p-4 re-card-blue">
                     <div className="text-sm font-semibold text-[rgb(var(--re-ink))]">
                       Sistem Satuan (SI / US)
                     </div>
@@ -190,15 +160,7 @@ export default function Home() {
                     </div>
                   </div>
 
-                  {/* Card 2 */}
-                  <div
-                    className="
-                      rounded-2xl
-                      border border-[rgba(var(--re-green),0.26)]
-                      bg-[rgba(var(--re-green),0.08)]
-                      p-4
-                    "
-                  >
+                  <div className="rounded-2xl p-4 re-card-green">
                     <div className="text-sm font-semibold text-[rgb(var(--re-ink))]">
                       Verifikasi per Course
                     </div>
@@ -207,15 +169,7 @@ export default function Home() {
                     </div>
                   </div>
 
-                  {/* Card 3 */}
-                  <div
-                    className="
-                      rounded-2xl
-                      border border-[rgba(var(--re-orange),0.28)]
-                      bg-[rgba(var(--re-orange),0.09)]
-                      p-4
-                    "
-                  >
+                  <div className="rounded-2xl p-4 re-card-orange">
                     <div className="text-sm font-semibold text-[rgb(var(--re-ink))]">
                       Struktur Modular
                     </div>
@@ -224,20 +178,12 @@ export default function Home() {
                     </div>
                   </div>
 
-                  {/* Note */}
-                  <div
-                    className="
-                      rounded-2xl
-                      border border-[rgba(var(--re-blue),0.18)]
-                      bg-[rgba(var(--re-blue),0.035)]
-                      p-4
-                    "
-                  >
+                  <div className="rounded-2xl p-4 re-card-blue">
                     <div className="text-sm font-semibold text-[rgb(var(--re-ink))]">
                       Catatan
                     </div>
                     <div className="mt-1 text-sm re-muted leading-relaxed">
-                      Mulai dari modul Shell. Modul lain sudah disiapkan agar penambahan fitur tidak mengubah UI secara signifikan.
+                      Mulai dari modul Shell. Modul lain disiapkan agar penambahan fitur tidak mengubah UI secara signifikan.
                     </div>
                   </div>
                 </div>
@@ -245,13 +191,7 @@ export default function Home() {
                 <div className="mt-6 flex flex-wrap gap-2">
                   <button
                     type="button"
-                    className="
-                      px-4 py-2 rounded-2xl text-sm font-semibold
-                      border border-[rgba(var(--re-blue),0.24)]
-                      bg-[rgba(var(--re-blue),0.07)]
-                      hover:bg-[rgba(var(--re-blue),0.12)]
-                      transition
-                    "
+                    className="px-4 py-2 rounded-2xl text-sm font-semibold transition re-btn-blue"
                     onClick={() =>
                       alert(
                         "Dokumentasi Teknis (coming soon)\n\nNanti bisa diisi: referensi clause, asumsi, definisi simbol, contoh kasus."
@@ -263,13 +203,7 @@ export default function Home() {
 
                   <button
                     type="button"
-                    className="
-                      px-4 py-2 rounded-2xl text-sm font-semibold
-                      border border-[rgba(var(--re-green),0.24)]
-                      bg-[rgba(var(--re-green),0.08)]
-                      hover:bg-[rgba(var(--re-green),0.13)]
-                      transition
-                    "
+                    className="px-4 py-2 rounded-2xl text-sm font-semibold transition re-btn-green"
                     onClick={() =>
                       alert(
                         "Bantuan & Dukungan (coming soon)\n\nNanti bisa diisi: cara lapor bug, request fitur, kontak PIC, dsb."
@@ -285,7 +219,7 @@ export default function Home() {
         </section>
       </div>
 
-      {/* ABOUT MODAL (Indonesia, ringkas) */}
+      {/* ABOUT MODAL (Indonesia) */}
       {openInfo ? (
         <div
           className="fixed inset-0 z-50 flex items-center justify-center p-4"
@@ -317,7 +251,7 @@ export default function Home() {
 
             <div className="mt-4 text-sm re-muted leading-relaxed">
               TankCalc adalah platform kalkulator internal untuk mendukung proses desain dan verifikasi tangki
-              mengacu pada API 650. Fokus utama: alur input yang ringkas, hasil yang jelas, serta struktur modular
+              mengacu pada API 650. Fokus utama: alur input ringkas, hasil yang jelas, serta struktur modular
               untuk pengembangan fitur lanjutan.
             </div>
           </div>
