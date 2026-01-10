@@ -27,7 +27,9 @@ function Chip({
             : "re-muted";
 
   return (
-    <span className={`px-3 py-1.5 rounded-2xl text-xs font-semibold border border-black/10 bg-white/80 ${toneClass}`}>
+    <span
+      className={`px-3 py-1.5 rounded-2xl text-xs font-semibold border border-black/10 bg-white/80 ${toneClass}`}
+    >
       {children}
     </span>
   );
@@ -55,7 +57,9 @@ function Toggle({
             className={[
               "px-4 py-2 rounded-2xl text-sm font-semibold border transition",
               "border-black/10",
-              active ? "bg-white shadow-sm text-[rgb(var(--re-blue))]" : "bg-white/60 hover:bg-white/80 re-muted",
+              active
+                ? "bg-white shadow-sm text-[rgb(var(--re-blue))]"
+                : "bg-white/60 hover:bg-white/80 re-muted",
             ].join(" ")}
           >
             {o.label}
@@ -66,6 +70,12 @@ function Toggle({
   );
 }
 
+const toNumberOrNaN = (s: string) => {
+  if (s.trim() === "") return NaN;
+  const n = Number(s);
+  return Number.isFinite(n) ? n : NaN;
+};
+
 export default function NewProjectPage() {
   const router = useRouter();
 
@@ -74,11 +84,11 @@ export default function NewProjectPage() {
 
   const [units, setUnits] = useState<UnitKey>("SI");
 
-  // Envelope input (nilai awal sengaja “aman”)
-  const [designPressure, setDesignPressure] = useState<number>(0);
-  const [designVacuum, setDesignVacuum] = useState<number>(0);
-  const [tMin, setTMin] = useState<number>(0);
-  const [tMax, setTMax] = useState<number>(60);
+  // Simpan sebagai string supaya user bisa hapus / kosongin input tanpa balik ke 0
+  const [designPressure, setDesignPressure] = useState<string>("");
+  const [designVacuum, setDesignVacuum] = useState<string>("");
+  const [tMin, setTMin] = useState<string>("");
+  const [tMax, setTMax] = useState<string>("60");
 
   const labels = useMemo(() => {
     return units === "SI"
@@ -86,27 +96,53 @@ export default function NewProjectPage() {
       : { p: "psi(g)", v: "psi", t: "°F" };
   }, [units]);
 
+  // Envelope numerik untuk engine seleksi standard.
+  // Field kosong => NaN (akan ditangani oleh validasi).
   const envelope = useMemo(
     () => ({
       units,
-      designPressure: Number.isFinite(designPressure) ? designPressure : 0,
-      designVacuum: Number.isFinite(designVacuum) ? designVacuum : 0,
-      tMin: Number.isFinite(tMin) ? tMin : 0,
-      tMax: Number.isFinite(tMax) ? tMax : 0,
+      designPressure: toNumberOrNaN(designPressure),
+      designVacuum: toNumberOrNaN(designVacuum),
+      tMin: toNumberOrNaN(tMin),
+      tMax: toNumberOrNaN(tMax),
     }),
     [units, designPressure, designVacuum, tMin, tMax]
   );
 
   const decision = useMemo(() => selectStandard(envelope), [envelope]);
 
+  // Validasi form (berbasis string + NaN)
   const errors = useMemo(() => {
     const e: string[] = [];
+
     if (!projectName.trim()) e.push("Nama project wajib diisi.");
-    if (designPressure < 0) e.push("Tekanan desain internal tidak boleh negatif.");
-    if (designVacuum < 0) e.push("Vakum desain diisi sebagai magnitudo (nilai positif).");
-    if (tMax < tMin) e.push("Temperatur maksimum harus lebih besar atau sama dengan temperatur minimum.");
+
+    const p = toNumberOrNaN(designPressure);
+    const v = toNumberOrNaN(designVacuum);
+    const tmin = toNumberOrNaN(tMin);
+    const tmax = toNumberOrNaN(tMax);
+
+    // Pressure wajib
+    if (!Number.isFinite(p)) e.push("Tekanan desain internal wajib diisi (angka).");
+    if (Number.isFinite(p) && p < 0) e.push("Tekanan desain internal tidak boleh negatif.");
+
+    // Vacuum opsional, tapi kalau diisi harus valid
+    if (designVacuum.trim() !== "" && !Number.isFinite(v)) e.push("Vakum desain harus berupa angka.");
+    if (Number.isFinite(v) && v < 0) e.push("Vakum desain diisi sebagai magnitudo (nilai positif).");
+
+    // Tmin opsional, tapi kalau diisi harus valid
+    if (tMin.trim() !== "" && !Number.isFinite(tmin)) e.push("Temperatur minimum harus berupa angka.");
+
+    // Tmax wajib
+    if (!Number.isFinite(tmax)) e.push("Temperatur maksimum wajib diisi (angka).");
+
+    // Relasi Tmin/Tmax (hanya jika keduanya valid)
+    if (Number.isFinite(tmax) && Number.isFinite(tmin) && tmax < tmin) {
+      e.push("Temperatur maksimum harus lebih besar atau sama dengan temperatur minimum.");
+    }
+
     return e;
-  }, [projectName, designPressure, designVacuum, tMax, tMin]);
+  }, [projectName, designPressure, designVacuum, tMin, tMax]);
 
   const canContinue = errors.length === 0 && decision.recommended !== "OUT_OF_SCOPE";
 
@@ -149,7 +185,9 @@ export default function NewProjectPage() {
 
             <div className="hidden sm:block">
               <div className="text-xs md:text-sm re-muted">TankCalc • Project Initiation</div>
-              <div className="mt-1 text-sm re-muted">Step 0 — Input awal project & pemilihan standard otomatis</div>
+              <div className="mt-1 text-sm re-muted">
+                Step 0 — Input awal project & pemilihan standard otomatis
+              </div>
             </div>
           </div>
 
@@ -230,13 +268,15 @@ export default function NewProjectPage() {
                   />
                 </div>
                 <div className="mt-3 text-sm re-muted">
-                  Label input akan mengikuti satuan: tekanan ({labels.p}), vakum ({labels.v}), temperatur ({labels.t}).
+                  Label input mengikuti satuan: tekanan ({labels.p}), vakum ({labels.v}), temperatur ({labels.t}).
                 </div>
               </div>
 
               {/* Envelope */}
               <div className="rounded-2xl border border-black/10 bg-white/60 p-5">
-                <div className="text-sm font-semibold text-[rgb(var(--re-blue))]">Pressure–Temperature Envelope</div>
+                <div className="text-sm font-semibold text-[rgb(var(--re-blue))]">
+                  Pressure–Temperature Envelope
+                </div>
 
                 <div className="mt-4 grid grid-cols-1 md:grid-cols-2 gap-4">
                   <label className="block">
@@ -246,8 +286,10 @@ export default function NewProjectPage() {
                     <input
                       type="number"
                       inputMode="decimal"
+                      step="any"
                       value={designPressure}
-                      onChange={(e) => setDesignPressure(Number(e.target.value))}
+                      onChange={(e) => setDesignPressure(e.target.value)}
+                      placeholder="Contoh: 0 / 10 / 17.2"
                       className="mt-2 w-full rounded-2xl border border-black/10 bg-white/90 px-4 py-3 text-sm outline-none focus:ring-2 focus:ring-black/10"
                     />
                     <div className="mt-2 text-xs re-muted">
@@ -262,8 +304,10 @@ export default function NewProjectPage() {
                     <input
                       type="number"
                       inputMode="decimal"
+                      step="any"
                       value={designVacuum}
-                      onChange={(e) => setDesignVacuum(Number(e.target.value))}
+                      onChange={(e) => setDesignVacuum(e.target.value)}
+                      placeholder="Contoh: 0 / 5"
                       className="mt-2 w-full rounded-2xl border border-black/10 bg-white/90 px-4 py-3 text-sm outline-none focus:ring-2 focus:ring-black/10"
                     />
                     <div className="mt-2 text-xs re-muted">
@@ -278,8 +322,10 @@ export default function NewProjectPage() {
                     <input
                       type="number"
                       inputMode="decimal"
+                      step="any"
                       value={tMin}
-                      onChange={(e) => setTMin(Number(e.target.value))}
+                      onChange={(e) => setTMin(e.target.value)}
+                      placeholder="Contoh: 0 / -10"
                       className="mt-2 w-full rounded-2xl border border-black/10 bg-white/90 px-4 py-3 text-sm outline-none focus:ring-2 focus:ring-black/10"
                     />
                   </label>
@@ -291,8 +337,10 @@ export default function NewProjectPage() {
                     <input
                       type="number"
                       inputMode="decimal"
+                      step="any"
                       value={tMax}
-                      onChange={(e) => setTMax(Number(e.target.value))}
+                      onChange={(e) => setTMax(e.target.value)}
+                      placeholder="Contoh: 60 / 93"
                       className="mt-2 w-full rounded-2xl border border-black/10 bg-white/90 px-4 py-3 text-sm outline-none focus:ring-2 focus:ring-black/10"
                     />
                   </label>
@@ -319,9 +367,7 @@ export default function NewProjectPage() {
                   disabled={!canContinue}
                   className={[
                     "px-8 py-4 rounded-2xl text-base font-semibold text-white shadow transition",
-                    canContinue
-                      ? "bg-[rgb(var(--re-blue))] hover:opacity-95"
-                      : "bg-black/30 cursor-not-allowed",
+                    canContinue ? "bg-[rgb(var(--re-blue))] hover:opacity-95" : "bg-black/30 cursor-not-allowed",
                   ].join(" ")}
                 >
                   Buat Project & Lanjut
