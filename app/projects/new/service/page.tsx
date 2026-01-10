@@ -14,6 +14,14 @@ import {
   type GeometryDraft,
 } from "../../../../lib/storage/projectDraft";
 
+import {
+  API650_DIAMETERS,
+  getPresetsByUnits,
+  getPresetByKey,
+  inferPresetKeyFromCourses,
+  type CoursePresetKey,
+} from "../../../../lib/api650/typicalGeometry";
+
 function StepPill({
   label,
   state,
@@ -32,6 +40,50 @@ function StepPill({
     <span className={`px-3 py-1.5 rounded-2xl text-xs font-semibold border border-black/10 ${cls}`}>
       {label}
     </span>
+  );
+}
+
+function Modal({
+  title,
+  children,
+  onClose,
+}: {
+  title: string;
+  children: React.ReactNode;
+  onClose: () => void;
+}) {
+  return (
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center p-4"
+      role="dialog"
+      aria-modal="true"
+      onClick={onClose}
+    >
+      <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" />
+      <div
+        className="relative w-full max-w-5xl rounded-3xl re-card p-4 md:p-6 border border-black/10 shadow-xl"
+        onClick={(e) => e.stopPropagation()}
+      >
+        <div className="flex items-start justify-between gap-4">
+          <div className="text-lg font-semibold text-[rgb(var(--re-blue))]">{title}</div>
+          <button
+            type="button"
+            className="px-3 py-2 rounded-2xl text-sm font-semibold border border-black/10 bg-white/85 hover:bg-white transition"
+            onClick={onClose}
+          >
+            Tutup
+          </button>
+        </div>
+
+        <div className="mt-4 max-h-[75vh] overflow-auto rounded-2xl border border-black/10 bg-white/70 p-3">
+          {children}
+        </div>
+
+        <div className="mt-3 text-xs re-muted leading-relaxed">
+          Catatan: gambar tabel ini hanya referensi internal untuk pemilihan dimensi tipikal. Verifikasi tetap mengacu pada dokumen API 650 edisi yang dipakai.
+        </div>
+      </div>
+    </div>
   );
 }
 
@@ -62,10 +114,14 @@ export default function NewProjectServicePage() {
   const [draft, setDraft] = useState<ProjectDraft | null>(null);
   const [hydrated, setHydrated] = useState(false);
 
-  // Service
+  // ===== Modal tabel =====
+  const [showTable, setShowTable] = useState(false);
+
+  // ===== Service =====
   const [storedProduct, setStoredProduct] = useState("");
   const [sg, setSg] = useState<string>("1");
   const [ca, setCa] = useState<string>("2"); // default SI
+
   const [liquidHeights, setLiquidHeights] = useState<Record<DesignCaseKey, string>>({
     operating: "",
     hydrotest: "",
@@ -75,30 +131,26 @@ export default function NewProjectServicePage() {
     steamout: "0",
   });
 
-  // Geometry
-  const [diameter, setDiameter] = useState<string>("");
-  const [shellHeight, setShellHeight] = useState<string>("");
-  const [numCourses, setNumCourses] = useState<string>("6");
-  const [typicalCourseHeight, setTypicalCourseHeight] = useState<string>("2.5");
-  const [courseHeights, setCourseHeights] = useState<string[]>([]);
+  // ===== Geometry berbasis tabel =====
+  const [presetKey, setPresetKey] = useState<CoursePresetKey>("SI_1800");
+  const [diameterSel, setDiameterSel] = useState<string>("");
+  const [courseCountSel, setCourseCountSel] = useState<string>(""); // jumlah course
 
   useEffect(() => {
     const d = loadProjectDraft();
     setDraft(d);
 
     if (d) {
-      // defaults by unit
+      // default by units
       if (d.units === "US") {
         setCa("0.125");
-        setTypicalCourseHeight("8");
-        setNumCourses("6");
+        setPresetKey("US_72");
       } else {
         setCa("2");
-        setTypicalCourseHeight("2.5");
-        setNumCourses("6");
+        setPresetKey("SI_1800");
       }
 
-      // hydrate from saved
+      // hydrate service
       if (d.service) {
         setStoredProduct(d.service.storedProduct ?? "");
         setSg(String(d.service.specificGravity ?? 1));
@@ -114,10 +166,15 @@ export default function NewProjectServicePage() {
         });
       }
 
+      // hydrate geometry (kalau sudah pernah diisi)
       if (d.geometry) {
-        setDiameter(String(d.geometry.diameter ?? ""));
-        setShellHeight(String(d.geometry.shellHeight ?? ""));
-        setCourseHeights((d.geometry.courses ?? []).map((x) => String(x)));
+        setDiameterSel(String(d.geometry.diameter ?? ""));
+
+        const inferred = inferPresetKeyFromCourses(d.units, d.geometry.courses ?? []);
+        if (inferred) setPresetKey(inferred);
+
+        const n = (d.geometry.courses ?? []).length;
+        if (n > 0) setCourseCountSel(String(n));
       }
     }
 
@@ -126,37 +183,58 @@ export default function NewProjectServicePage() {
 
   const activeCases = useMemo(() => (draft ? getActiveCases(draft) : []), [draft]);
 
+  const presets = useMemo(() => {
+    if (!draft) return [];
+    return getPresetsByUnits(draft.units);
+  }, [draft]);
+
+  const preset = useMemo(() => getPresetByKey(presetKey), [presetKey]);
+
+  // if units berubah (harusnya gak sering), pastikan presetKey valid
+  useEffect(() => {
+    if (!draft) return;
+    const valid = presets.some((p) => p.key === presetKey);
+    if (!valid) {
+      setPresetKey(draft.units === "US" ? "US_72" : "SI_1800");
+      setCourseCountSel("");
+      setDiameterSel("");
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [draft?.units]);
+
   const lengthUnit = useMemo(() => (draft?.units === "US" ? "ft" : "m"), [draft]);
   const caUnit = useMemo(() => (draft?.units === "US" ? "in" : "mm"), [draft]);
 
-  const sumCourses = useMemo(() => {
-    const arr = courseHeights.map(toNumberOrNaN).filter((x) => Number.isFinite(x));
-    return arr.reduce((a, b) => a + b, 0);
-  }, [courseHeights]);
+  const diameters = useMemo(() => {
+    if (!draft) return [];
+    return API650_DIAMETERS[draft.units];
+  }, [draft]);
 
-  const generateCourses = () => {
-    const H = toNumberOrNaN(shellHeight);
-    const n = Number.parseInt(numCourses, 10);
-    const h = toNumberOrNaN(typicalCourseHeight);
+  const heightOptions = useMemo(() => preset?.heightOptions ?? [], [preset]);
 
-    if (!Number.isFinite(H) || H <= 0) return;
-    if (!Number.isFinite(h) || h <= 0) return;
-    if (!Number.isFinite(n) || n < 1) return;
+  const selectedCourseCount = useMemo(() => {
+    const n = Number.parseInt(courseCountSel, 10);
+    return Number.isFinite(n) ? n : NaN;
+  }, [courseCountSel]);
 
-    const last = H - h * (n - 1);
-    if (!(last > 0)) return;
+  const shellHeight = useMemo(() => {
+    if (!preset) return NaN;
+    if (!Number.isFinite(selectedCourseCount) || selectedCourseCount <= 0) return NaN;
+    return preset.courseHeight * selectedCourseCount;
+  }, [preset, selectedCourseCount]);
 
-    const arr: string[] = Array.from({ length: n }, (_, i) => (i === n - 1 ? String(last) : String(h)));
-    setCourseHeights(arr);
-  };
+  const coursesArray = useMemo(() => {
+    if (!preset) return [];
+    if (!Number.isFinite(selectedCourseCount) || selectedCourseCount <= 0) return [];
+    return Array.from({ length: selectedCourseCount }, () => preset.courseHeight);
+  }, [preset, selectedCourseCount]);
 
   const fillDefaultsFromShellHeight = () => {
-    const H = toNumberOrNaN(shellHeight);
-    if (!Number.isFinite(H) || H <= 0) return;
+    if (!Number.isFinite(shellHeight) || shellHeight <= 0) return;
 
-    // Default: operating 90% shell, hydrotest 100%, empty cases 0
-    const op = Math.max(0, 0.9 * H);
-    const ht = H;
+    // default: operating 90% shell, hydrotest 100%, empty 0
+    const op = Math.max(0, 0.9 * shellHeight);
+    const ht = shellHeight;
 
     setLiquidHeights((prev) => ({
       ...prev,
@@ -169,6 +247,25 @@ export default function NewProjectServicePage() {
     }));
   };
 
+  const warnings = useMemo(() => {
+    const w: string[] = [];
+
+    if (draft?.recommendedStandard === "API_620") {
+      w.push("Project Anda terpilih API 620. Pemilihan geometry di sini memakai tabel tipikal API 650 sebagai referensi dimensi, bukan sebagai rule desain API 620.");
+    }
+
+    if (Number.isFinite(shellHeight)) {
+      for (const k of activeCases) {
+        const lh = toNumberOrNaN(liquidHeights[k] ?? "");
+        if (Number.isFinite(lh) && lh > shellHeight + 1e-6) {
+          w.push(`Liquid height case ${CASE_LABEL[k].title} lebih besar dari shell height. Periksa input.`);
+        }
+      }
+    }
+
+    return w;
+  }, [draft?.recommendedStandard, shellHeight, activeCases, liquidHeights]);
+
   const errors = useMemo(() => {
     const e: string[] = [];
     if (!draft) e.push("Draft project tidak ditemukan. Silakan kembali ke Step 0.");
@@ -179,32 +276,28 @@ export default function NewProjectServicePage() {
     const caN = toNumberOrNaN(ca);
     if (!Number.isFinite(caN) || caN < 0) e.push("Corrosion allowance (CA) wajib diisi dan ≥ 0.");
 
-    const D = toNumberOrNaN(diameter);
-    if (!Number.isFinite(D) || D <= 0) e.push("Diameter tank wajib diisi dan > 0.");
+    const D = toNumberOrNaN(diameterSel);
+    if (!Number.isFinite(D) || D <= 0) e.push("Diameter wajib dipilih dari tabel.");
+    if (Number.isFinite(D) && draft) {
+      const allowed = API650_DIAMETERS[draft.units].includes(D);
+      if (!allowed) e.push("Diameter yang dipilih tidak ada di daftar diameter tipikal API 650.");
+    }
 
-    const H = toNumberOrNaN(shellHeight);
-    if (!Number.isFinite(H) || H <= 0) e.push("Shell height wajib diisi dan > 0.");
+    if (!preset) e.push("Preset course tidak valid.");
+    if (!courseCountSel.trim()) e.push("Tank height / jumlah course wajib dipilih.");
+    if (!Number.isFinite(shellHeight) || shellHeight <= 0) e.push("Shell height tidak valid (hasil dari preset + jumlah course).");
 
-    if (courseHeights.length < 1) e.push("Course table belum ada. Klik “Generate course table”.");
-    const ch = courseHeights.map(toNumberOrNaN);
-    if (ch.some((x) => !Number.isFinite(x) || x <= 0)) e.push("Semua tinggi course harus angka dan > 0.");
-
-    // liquid heights minimal
+    // liquid heights wajib minimal operating/hydrotest jika case aktif
     if (draft) {
       const act = getActiveCases(draft);
-
-      // operating always active in Step 1 (by design)
       if (act.includes("operating")) {
         const op = toNumberOrNaN(liquidHeights.operating);
         if (!Number.isFinite(op) || op < 0) e.push("Liquid height untuk Operating wajib diisi (angka ≥ 0).");
       }
-
       if (act.includes("hydrotest")) {
         const ht = toNumberOrNaN(liquidHeights.hydrotest);
         if (!Number.isFinite(ht) || ht < 0) e.push("Liquid height untuk Hydrotest wajib diisi (angka ≥ 0).");
       }
-
-      // active optional cases: if blank, boleh (akan disimpan sebagai 0)
       for (const k of act) {
         const sVal = liquidHeights[k];
         if (sVal.trim() !== "") {
@@ -215,49 +308,23 @@ export default function NewProjectServicePage() {
     }
 
     return e;
-  }, [draft, sg, ca, diameter, shellHeight, courseHeights, liquidHeights]);
-
-  const warnings = useMemo(() => {
-    const w: string[] = [];
-    const H = toNumberOrNaN(shellHeight);
-    if (Number.isFinite(H) && courseHeights.length > 0) {
-      const diff = Math.abs(sumCourses - H);
-      if (diff > 1e-6) {
-        w.push(`Total tinggi course (${sumCourses.toFixed(3)} ${lengthUnit}) tidak sama dengan shell height (${H.toFixed(3)} ${lengthUnit}).`);
-      }
-    }
-    if (draft) {
-      const Hs = toNumberOrNaN(shellHeight);
-      if (Number.isFinite(Hs)) {
-        for (const k of getActiveCases(draft)) {
-          const lh = toNumberOrNaN(liquidHeights[k] ?? "");
-          if (Number.isFinite(lh) && lh > Hs + 1e-6) {
-            w.push(`Liquid height case ${CASE_LABEL[k].title} lebih besar dari shell height. Periksa input.`);
-          }
-        }
-      }
-    }
-    return w;
-  }, [draft, shellHeight, courseHeights.length, sumCourses, liquidHeights, lengthUnit]);
+  }, [draft, sg, ca, diameterSel, preset, courseCountSel, shellHeight, liquidHeights]);
 
   const canContinue = hydrated && errors.length === 0;
 
   const handleSaveContinue = () => {
-    if (!draft || !canContinue) return;
+    if (!draft || !canContinue || !preset) return;
 
     const sgN = toNumberOrNaN(sg);
     const caN = toNumberOrNaN(ca);
-    const D = toNumberOrNaN(diameter);
-    const H = toNumberOrNaN(shellHeight);
-
-    const courses = courseHeights.map(toNumberOrNaN).map((x) => (Number.isFinite(x) ? x : 0)).filter((x) => x > 0);
+    const D = toNumberOrNaN(diameterSel);
 
     const act = getActiveCases(draft);
     const lh: Partial<Record<DesignCaseKey, number>> = {};
     for (const k of act) {
       const sVal = liquidHeights[k] ?? "";
       const nVal = toNumberOrNaN(sVal);
-      lh[k] = Number.isFinite(nVal) ? nVal : 0; // blank -> 0
+      lh[k] = Number.isFinite(nVal) ? nVal : 0;
     }
 
     const service: ServiceDraft = {
@@ -269,8 +336,8 @@ export default function NewProjectServicePage() {
 
     const geometry: GeometryDraft = {
       diameter: D,
-      shellHeight: H,
-      courses,
+      shellHeight: shellHeight,
+      courses: coursesArray,
     };
 
     updateProjectDraft({ service, geometry });
@@ -283,6 +350,26 @@ export default function NewProjectServicePage() {
         <div className="mx-auto max-w-6xl px-6 py-10 md:px-10 md:py-14">
           <div className="re-card rounded-[2rem] p-7 md:p-9">
             <div className="text-sm re-muted">Memuat draft project...</div>
+          </div>
+        </div>
+      </main>
+    );
+  }
+
+  if (!draft) {
+    return (
+      <main className="min-h-screen re-geo">
+        <div className="mx-auto max-w-6xl px-6 py-10 md:px-10 md:py-14">
+          <div className="re-card rounded-[2rem] p-7 md:p-9">
+            <div className="text-sm text-red-600 font-semibold">Draft project tidak ditemukan.</div>
+            <div className="mt-4">
+              <Link
+                href="/projects/new"
+                className="px-4 py-2 rounded-2xl text-sm font-semibold border border-black/10 bg-white/70 hover:bg-white/90 transition"
+              >
+                Kembali ke Step 0
+              </Link>
+            </div>
           </div>
         </div>
       </main>
@@ -342,8 +429,8 @@ export default function NewProjectServicePage() {
             </h1>
 
             <p className="mt-2 text-sm md:text-base re-muted leading-relaxed">
-              Isi data fluida (SG + CA), liquid height per design case, dan geometri tank (diameter + course table).
-              Kalkulasi shell thickness di Step 4 akan memakai data ini.
+              Di step ini, geometri tank (D, Hshell, jumlah course) dipilih dari preset tipikal API 650 berdasarkan
+              <strong> course height</strong>. Ini bikin input konsisten dan gampang direview.
             </p>
 
             {/* SERVICE */}
@@ -384,17 +471,131 @@ export default function NewProjectServicePage() {
                     step="any"
                     value={ca}
                     onChange={(e) => setCa(e.target.value)}
-                    placeholder={draft?.units === "US" ? "Contoh: 0.125" : "Contoh: 2"}
+                    placeholder={draft.units === "US" ? "Contoh: 0.125" : "Contoh: 2"}
                     className="mt-2 w-full rounded-2xl border border-black/10 bg-white/90 px-4 py-3 text-sm outline-none focus:ring-2 focus:ring-black/10"
                   />
                 </label>
               </div>
             </div>
 
+            {/* GEOMETRY - TABLE DRIVEN */}
+            <div className="mt-6 rounded-2xl border border-black/10 bg-white/60 p-5">
+              <div className="flex flex-wrap items-center justify-between gap-3">
+                <div>
+                  <div className="text-sm font-semibold text-[rgb(var(--re-blue))]">Geometry (berdasarkan tabel API 650)</div>
+                  <div className="mt-1 text-sm re-muted">
+                    Pilih course height → pilih diameter → pilih tank height/jumlah course.
+                  </div>
+                </div>
+
+                <button
+                  type="button"
+                  onClick={() => setShowTable(true)}
+                  className="px-4 py-2 rounded-2xl text-sm font-semibold border border-black/10 bg-white/70 hover:bg-white/90 transition"
+                >
+                  Lihat tabel API 650
+                </button>
+              </div>
+
+              <div className="mt-4 grid grid-cols-1 md:grid-cols-2 gap-4">
+                {/* Preset */}
+                <label className="block">
+                  <div className="text-sm font-semibold text-[rgb(var(--re-ink))]">Typical course height *</div>
+                  <select
+                    value={presetKey}
+                    onChange={(e) => {
+                      setPresetKey(e.target.value as CoursePresetKey);
+                      setCourseCountSel("");
+                    }}
+                    className="mt-2 w-full rounded-2xl border border-black/10 bg-white/90 px-4 py-3 text-sm outline-none focus:ring-2 focus:ring-black/10"
+                  >
+                    {presets.map((p) => (
+                      <option key={p.key} value={p.key}>
+                        {p.label}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+
+                {/* Diameter */}
+                <label className="block">
+                  <div className="text-sm font-semibold text-[rgb(var(--re-ink))]">
+                    Diameter tank (D) * ({lengthUnit})
+                  </div>
+                  <select
+                    value={diameterSel}
+                    onChange={(e) => setDiameterSel(e.target.value)}
+                    className="mt-2 w-full rounded-2xl border border-black/10 bg-white/90 px-4 py-3 text-sm outline-none focus:ring-2 focus:ring-black/10"
+                  >
+                    <option value="">Pilih diameter...</option>
+                    {diameters.map((d) => (
+                      <option key={d} value={String(d)}>
+                        {d} {lengthUnit}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+
+                {/* Height / courses */}
+                <label className="block md:col-span-2">
+                  <div className="text-sm font-semibold text-[rgb(var(--re-ink))]">
+                    Tank height / jumlah course * ({lengthUnit})
+                  </div>
+                  <select
+                    value={courseCountSel}
+                    onChange={(e) => setCourseCountSel(e.target.value)}
+                    className="mt-2 w-full rounded-2xl border border-black/10 bg-white/90 px-4 py-3 text-sm outline-none focus:ring-2 focus:ring-black/10"
+                  >
+                    <option value="">Pilih tinggi/jumlah course...</option>
+                    {heightOptions.map((o) => (
+                      <option key={o.courses} value={String(o.courses)}>
+                        H = {o.shellHeight} {lengthUnit}  ({o.courses} courses @ {preset?.courseHeight} {lengthUnit})
+                      </option>
+                    ))}
+                  </select>
+
+                  <div className="mt-2 text-xs re-muted">
+                    Setelah dipilih, course table akan otomatis jadi seragam sesuai preset.
+                  </div>
+                </label>
+              </div>
+
+              {/* Geometry preview */}
+              <div className="mt-5 rounded-2xl border border-black/10 bg-white/70 p-4">
+                <div className="text-sm font-semibold text-[rgb(var(--re-blue))]">Preview geometry</div>
+                <div className="mt-2 text-sm re-muted leading-relaxed">
+                  <div>
+                    <strong className="text-[rgb(var(--re-ink))]">D:</strong>{" "}
+                    {diameterSel ? `${diameterSel} ${lengthUnit}` : "-"}
+                  </div>
+                  <div>
+                    <strong className="text-[rgb(var(--re-ink))]">Hshell:</strong>{" "}
+                    {Number.isFinite(shellHeight) ? `${shellHeight} ${lengthUnit}` : "-"}
+                  </div>
+                  <div>
+                    <strong className="text-[rgb(var(--re-ink))]">Jumlah course:</strong>{" "}
+                    {Number.isFinite(selectedCourseCount) ? selectedCourseCount : "-"}
+                  </div>
+                  <div>
+                    <strong className="text-[rgb(var(--re-ink))]">Course height:</strong>{" "}
+                    {preset ? `${preset.courseHeight} ${lengthUnit}` : "-"}
+                  </div>
+                </div>
+
+                {coursesArray.length > 0 ? (
+                  <div className="mt-3 text-xs re-muted">
+                    Course table (bottom→top): [{coursesArray.map((x) => String(x)).join(", ")}]
+                  </div>
+                ) : null}
+              </div>
+            </div>
+
             {/* CASE HEIGHTS */}
             <div className="mt-6 rounded-2xl border border-black/10 bg-white/60 p-5">
               <div className="flex flex-wrap items-center justify-between gap-3">
-                <div className="text-sm font-semibold text-[rgb(var(--re-blue))]">Liquid height per design case</div>
+                <div className="text-sm font-semibold text-[rgb(var(--re-blue))]">
+                  Liquid height per design case
+                </div>
                 <button
                   type="button"
                   onClick={fillDefaultsFromShellHeight}
@@ -432,125 +633,6 @@ export default function NewProjectServicePage() {
                   </div>
                 ))}
               </div>
-            </div>
-
-            {/* GEOMETRY */}
-            <div className="mt-6 rounded-2xl border border-black/10 bg-white/60 p-5">
-              <div className="text-sm font-semibold text-[rgb(var(--re-blue))]">Geometry</div>
-
-              <div className="mt-4 grid grid-cols-1 md:grid-cols-2 gap-4">
-                <label className="block">
-                  <div className="text-sm font-semibold text-[rgb(var(--re-ink))]">
-                    Diameter tank (D) * ({lengthUnit})
-                  </div>
-                  <input
-                    type="number"
-                    inputMode="decimal"
-                    step="any"
-                    value={diameter}
-                    onChange={(e) => setDiameter(e.target.value)}
-                    placeholder={draft?.units === "US" ? "Contoh: 40" : "Contoh: 12"}
-                    className="mt-2 w-full rounded-2xl border border-black/10 bg-white/90 px-4 py-3 text-sm outline-none focus:ring-2 focus:ring-black/10"
-                  />
-                </label>
-
-                <label className="block">
-                  <div className="text-sm font-semibold text-[rgb(var(--re-ink))]">
-                    Shell height (Hshell) * ({lengthUnit})
-                  </div>
-                  <input
-                    type="number"
-                    inputMode="decimal"
-                    step="any"
-                    value={shellHeight}
-                    onChange={(e) => setShellHeight(e.target.value)}
-                    placeholder={draft?.units === "US" ? "Contoh: 40" : "Contoh: 12"}
-                    className="mt-2 w-full rounded-2xl border border-black/10 bg-white/90 px-4 py-3 text-sm outline-none focus:ring-2 focus:ring-black/10"
-                  />
-                </label>
-
-                <label className="block">
-                  <div className="text-sm font-semibold text-[rgb(var(--re-ink))]">Jumlah courses *</div>
-                  <input
-                    type="number"
-                    inputMode="numeric"
-                    step="1"
-                    value={numCourses}
-                    onChange={(e) => setNumCourses(e.target.value)}
-                    placeholder="6"
-                    className="mt-2 w-full rounded-2xl border border-black/10 bg-white/90 px-4 py-3 text-sm outline-none focus:ring-2 focus:ring-black/10"
-                  />
-                </label>
-
-                <label className="block">
-                  <div className="text-sm font-semibold text-[rgb(var(--re-ink))]">
-                    Typical course height * ({lengthUnit})
-                  </div>
-                  <input
-                    type="number"
-                    inputMode="decimal"
-                    step="any"
-                    value={typicalCourseHeight}
-                    onChange={(e) => setTypicalCourseHeight(e.target.value)}
-                    placeholder={draft?.units === "US" ? "Contoh: 8" : "Contoh: 2.5"}
-                    className="mt-2 w-full rounded-2xl border border-black/10 bg-white/90 px-4 py-3 text-sm outline-none focus:ring-2 focus:ring-black/10"
-                  />
-                </label>
-              </div>
-
-              <div className="mt-4 flex flex-wrap gap-2">
-                <button
-                  type="button"
-                  onClick={generateCourses}
-                  className="px-4 py-2 rounded-2xl text-sm font-semibold text-white bg-[rgb(var(--re-blue))] hover:opacity-95 transition shadow"
-                >
-                  Generate course table
-                </button>
-
-                <button
-                  type="button"
-                  onClick={() => setCourseHeights([])}
-                  className="px-4 py-2 rounded-2xl text-sm font-semibold border border-black/10 bg-white/70 hover:bg-white/90 transition re-muted"
-                >
-                  Reset course table
-                </button>
-              </div>
-
-              {courseHeights.length > 0 ? (
-                <div className="mt-5">
-                  <div className="text-sm font-semibold text-[rgb(var(--re-ink))]">Course table (bottom → top)</div>
-                  <div className="mt-3 space-y-2">
-                    {courseHeights.map((h, idx) => (
-                      <div
-                        key={idx}
-                        className="flex items-center justify-between gap-3 rounded-2xl border border-black/10 bg-white/70 px-4 py-3"
-                      >
-                        <div className="text-sm font-semibold text-[rgb(var(--re-blue))]">
-                          Course {idx + 1}
-                        </div>
-                        <div className="flex items-center gap-2">
-                          <input
-                            type="number"
-                            inputMode="decimal"
-                            step="any"
-                            value={h}
-                            onChange={(e) => {
-                              const v = e.target.value;
-                              setCourseHeights((prev) => prev.map((x, i) => (i === idx ? v : x)));
-                            }}
-                            className="w-40 rounded-2xl border border-black/10 bg-white/90 px-4 py-2 text-sm outline-none focus:ring-2 focus:ring-black/10"
-                          />
-                          <span className="text-sm re-muted">{lengthUnit}</span>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-
-                  <div className="mt-3 text-sm re-muted">
-                    Total course height: <strong>{sumCourses.toFixed(3)}</strong> {lengthUnit}
-                  </div>
-                </div>
-              ) : null}
             </div>
 
             {/* ERRORS */}
@@ -606,27 +688,25 @@ export default function NewProjectServicePage() {
             <div className="mt-1 text-lg font-semibold text-[rgb(var(--re-blue))]">Project Summary</div>
 
             <div className="mt-5 rounded-2xl border border-black/10 bg-white/60 p-5 text-sm re-muted leading-relaxed">
-              {draft ? (
-                <>
-                  <div><strong className="text-[rgb(var(--re-ink))]">Project:</strong> {draft.projectName}</div>
-                  <div><strong className="text-[rgb(var(--re-ink))]">Units:</strong> {draft.units}</div>
-                  <div className="mt-2">
-                    <strong className="text-[rgb(var(--re-ink))]">Standard (auto):</strong>{" "}
-                    {draft.recommendedStandard === "API_650"
-                      ? "API 650"
-                      : draft.recommendedStandard === "API_620"
-                        ? "API 620"
-                        : "Out-of-scope"}
-                  </div>
+              <div><strong className="text-[rgb(var(--re-ink))]">Project:</strong> {draft.projectName}</div>
+              <div><strong className="text-[rgb(var(--re-ink))]">Units:</strong> {draft.units}</div>
+              <div className="mt-2">
+                <strong className="text-[rgb(var(--re-ink))]">Standard (auto):</strong>{" "}
+                {draft.recommendedStandard === "API_650"
+                  ? "API 650"
+                  : draft.recommendedStandard === "API_620"
+                    ? "API 620"
+                    : "Out-of-scope"}
+              </div>
 
-                  <div className="mt-4">
-                    <strong className="text-[rgb(var(--re-ink))]">Active cases:</strong>{" "}
-                    {activeCases.length}
-                  </div>
-                </>
-              ) : (
-                <div>Draft tidak ditemukan.</div>
-              )}
+              <div className="mt-4">
+                <strong className="text-[rgb(var(--re-ink))]">Geometry:</strong>
+                <ul className="mt-2 list-disc pl-5">
+                  <li>D: {diameterSel ? `${diameterSel} ${lengthUnit}` : "-"}</li>
+                  <li>Hshell: {Number.isFinite(shellHeight) ? `${shellHeight} ${lengthUnit}` : "-"}</li>
+                  <li>Courses: {Number.isFinite(selectedCourseCount) ? selectedCourseCount : "-"}</li>
+                </ul>
+              </div>
             </div>
 
             <div className="mt-6 rounded-2xl border border-black/10 bg-white/60 p-4 text-sm re-muted leading-relaxed">
@@ -636,6 +716,22 @@ export default function NewProjectServicePage() {
           </div>
         </div>
       </div>
+
+      {/* MODAL TABLE */}
+      {showTable && preset ? (
+        <Modal title={preset.tableTitle} onClose={() => setShowTable(false)}>
+          <div className="w-full">
+            <Image
+              src={preset.tableImageSrc}
+              alt={preset.tableTitle}
+              width={1400}
+              height={1000}
+              className="w-full h-auto object-contain rounded-2xl"
+              priority
+            />
+          </div>
+        </Modal>
+      ) : null}
     </main>
   );
 }
