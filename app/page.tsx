@@ -8,30 +8,76 @@ export default function Home() {
   const [openInfo, setOpenInfo] = useState(false);
 
   return (
-    <main className="min-h-screen p-6 re-geo">
-      <div className="mx-auto max-w-5xl">
-        <section className="re-card rounded-3xl p-8 md:p-10">
-          {/* HEADER */}
-          <div className="flex flex-col md:flex-row md:items-center gap-6">
-            {/* LOGO (RECTANGLE / LANDSCAPE) — jangan diubah */}
-            <div className="shrink-0">
-              <div className="h-16 w-44 md:h-20 md:w-56 rounded-3xl bg-white/90 border border-black/10 shadow-sm flex items-center justify-center px-3">
-                <Image
-                  src="/re-logo.png"
-                  alt="Rekayasa Engineering"
-                  width={560}
-                  height={200}
-                  className="w-full h-full object-contain"
-                  priority
-                />
+    <main className="min-h-screen re-geo">
+      {/* Background padding biar napas */}
+      <div className="mx-auto max-w-6xl px-6 py-10 md:px-10 md:py-14">
+        <section className="re-card rounded-[2rem] p-8 md:p-12">
+          {/* TOP BAR */}
+          <div className="flex flex-col gap-6 lg:flex-row lg:items-center lg:justify-between">
+            <div className="flex items-center gap-6">
+              {/* LOGO (RECTANGLE / LANDSCAPE) — jangan diubah */}
+              <div className="shrink-0">
+                <div className="h-16 w-44 md:h-20 md:w-56 rounded-3xl bg-white/90 border border-black/10 shadow-sm flex items-center justify-center px-3">
+                  <Image
+                    src="/re-logo.png"
+                    alt="Rekayasa Engineering"
+                    width={560}
+                    height={200}
+                    className="w-full h-full object-contain"
+                    priority
+                  />
+                </div>
+              </div>
+
+              <div className="hidden sm:block">
+                <div className="text-xs md:text-sm re-muted">
+                  API 650 Tank Calculator
+                </div>
+                <div className="mt-1 text-sm re-muted">
+                  Internal tool • Mechanical Engineering
+                </div>
               </div>
             </div>
 
-            {/* TITLE */}
-            <div className="flex-1">
-              <div className="text-sm re-muted">API 650 Tank Calculator</div>
+            {/* SMALL LINKS */}
+            <div className="flex flex-wrap gap-2">
+              <button
+                type="button"
+                className="px-4 py-2 rounded-2xl text-sm font-semibold
+                           border border-black/10 bg-white/70 hover:bg-white/90 transition"
+                onClick={() =>
+                  alert(
+                    "Changelog (coming soon)\n\nNanti bisa isi: versi, perubahan rumus, perbaikan UI, dll."
+                  )
+                }
+              >
+                Changelog
+              </button>
+              <button
+                type="button"
+                className="px-4 py-2 rounded-2xl text-sm font-semibold
+                           border border-black/10 bg-white/70 hover:bg-white/90 transition"
+                onClick={() =>
+                  alert(
+                    "Roadmap (coming soon)\n\n• Bottom\n• Roof\n• Wind\n• Seismic\n• Nozzle reinforcement\n• Export PDF/Excel"
+                  )
+                }
+              >
+                Roadmap
+              </button>
+              <span className="px-3 py-2 rounded-2xl text-sm font-semibold border border-black/10 bg-white/60 re-muted">
+                Internal RE
+              </span>
+            </div>
+          </div>
 
-              <h1 className="mt-2 text-4xl md:text-6xl font-extrabold tracking-tight leading-[1.05]">
+          {/* HERO GRID */}
+          <div className="mt-10 grid grid-cols-1 lg:grid-cols-12 gap-8 lg:gap-10">
+            {/* LEFT: Headline + CTA */}
+            <div className="lg:col-span-7">
+              <div className="text-xs md:text-sm re-muted">Tank design & check</div>
+
+              <h1 className="mt-3 text-5xl md:text-6xl lg:text-7xl font-extrabold tracking-tight leading-[1.03]">
                 <span className="re-title">
                   <span className="tank">Tank</span>
                   <span className="calc">Calc</span>
@@ -40,120 +86,141 @@ export default function Home() {
                 <span className="text-[rgb(var(--re-ink))]">Web App</span>
               </h1>
 
-              {/* Catchy + lebih umum */}
-              <p className="mt-4 max-w-3xl text-sm md:text-base re-muted leading-relaxed">
+              {/* Catchy, general */}
+              <p className="mt-6 max-w-2xl text-base md:text-lg re-muted leading-relaxed">
                 Tool cepat untuk <strong>desain & verifikasi tangki API 650</strong> —
-                dari input sederhana sampai output yang siap direview (SI / US).
+                input ringkas, hasil jelas, dan siap dipakai buat review (SI / US).
               </p>
 
-              {/* Quick chips biar gak sepi tapi tetap minimal */}
-              <div className="mt-4 flex flex-wrap gap-2">
-                <span className="px-3 py-1.5 rounded-2xl text-xs border border-black/10 bg-white/70 re-muted">
-                  SI / US Units
-                </span>
-                <span className="px-3 py-1.5 rounded-2xl text-xs border border-black/10 bg-white/70 re-muted">
-                  Per-course check
-                </span>
-                <span className="px-3 py-1.5 rounded-2xl text-xs border border-black/10 bg-white/70 re-muted">
-                  OK / NOT OK
-                </span>
-                <span className="px-3 py-1.5 rounded-2xl text-xs border border-black/10 bg-white/70 re-muted">
-                  Modular (Shell/Bottom/Roof/Wind/Seismic/Nozzle)
-                </span>
+              {/* Actions */}
+              <div className="mt-8 flex flex-wrap items-center gap-4">
+                <Link
+                  href="/calculator"
+                  className="px-10 py-4 rounded-2xl text-base md:text-lg font-semibold text-white
+                             bg-[rgb(var(--re-blue))] hover:opacity-95 transition shadow"
+                >
+                  Buka Kalkulator
+                </Link>
+
+                <button
+                  type="button"
+                  className="px-8 py-4 rounded-2xl text-base md:text-lg font-semibold
+                             border border-black/10 bg-white/70 hover:bg-white/90 transition"
+                  onClick={() => setOpenInfo(true)}
+                  aria-haspopup="dialog"
+                  aria-expanded={openInfo}
+                >
+                  Tentang
+                </button>
+
+                <button
+                  type="button"
+                  className="px-8 py-4 rounded-2xl text-base md:text-lg font-semibold
+                             border border-black/10 bg-white/70 hover:bg-white/90 transition"
+                  onClick={() =>
+                    alert(
+                      "Template Input (coming soon)\n\nIde: preset parameter umum + contoh pembagian course."
+                    )
+                  }
+                >
+                  Template Input
+                </button>
+              </div>
+
+              {/* Brand dots */}
+              <div className="mt-10 flex items-center gap-3 text-sm re-muted">
+                <span className="h-3 w-3 rounded-full bg-[rgb(var(--re-blue))]" />
+                <span className="h-3 w-3 rounded-full bg-[rgb(var(--re-green))]" />
+                <span className="h-3 w-3 rounded-full bg-[rgb(var(--re-orange))]" />
+                <span>Engineering calculator platform</span>
               </div>
             </div>
-          </div>
 
-          {/* ACTIONS */}
-          <div className="mt-9 flex flex-wrap items-center gap-3">
-            {/* Primary */}
-            <Link
-              href="/calculator"
-              className="px-10 py-4 rounded-2xl text-sm md:text-base font-semibold text-white
-                         bg-[rgb(var(--re-blue))] hover:opacity-95 transition shadow"
-            >
-              Buka Kalkulator
-            </Link>
+            {/* RIGHT: Feature panel biar page keisi */}
+            <div className="lg:col-span-5">
+              <div className="rounded-[1.75rem] border border-black/10 bg-white/55 p-6 md:p-7">
+                <div className="flex items-start justify-between gap-4">
+                  <div>
+                    <div className="text-xs re-muted">Highlights</div>
+                    <div className="mt-1 text-lg font-semibold text-[rgb(var(--re-ink))]">
+                      Core capabilities
+                    </div>
+                  </div>
+                  <div className="px-3 py-1.5 rounded-2xl text-xs font-semibold border border-black/10 bg-white/70 re-muted">
+                    API 650
+                  </div>
+                </div>
 
-            {/* Secondary */}
-            <button
-              type="button"
-              className="px-8 py-4 rounded-2xl text-sm md:text-base font-semibold
-                         border border-black/10 bg-white/70 hover:bg-white/90 transition"
-              onClick={() => setOpenInfo(true)}
-              aria-haspopup="dialog"
-              aria-expanded={openInfo}
-            >
-              Tentang
-            </button>
+                <div className="mt-5 grid grid-cols-1 gap-3">
+                  <div className="rounded-2xl border border-black/10 bg-white/70 p-4">
+                    <div className="text-sm font-semibold text-[rgb(var(--re-ink))]">
+                      Unit system
+                    </div>
+                    <div className="mt-1 text-sm re-muted">
+                      Pilih SI / US, biar konsisten dari input sampai output.
+                    </div>
+                  </div>
 
-            <button
-              type="button"
-              className="px-8 py-4 rounded-2xl text-sm md:text-base font-semibold
-                         border border-black/10 bg-white/70 hover:bg-white/90 transition"
-              onClick={() =>
-                alert(
-                  "Template Input (coming soon)\n\nIde: preset parameter umum (water, diesel, dll) + contoh pembagian course."
-                )
-              }
-            >
-              Template Input
-            </button>
+                  <div className="rounded-2xl border border-black/10 bg-white/70 p-4">
+                    <div className="text-sm font-semibold text-[rgb(var(--re-ink))]">
+                      Per-course verification
+                    </div>
+                    <div className="mt-1 text-sm re-muted">
+                      Output tebal minimum & status OK / NOT OK per course.
+                    </div>
+                  </div>
 
-            <button
-              type="button"
-              className="px-8 py-4 rounded-2xl text-sm md:text-base font-semibold
-                         border border-black/10 bg-white/70 hover:bg-white/90 transition"
-              onClick={() =>
-                alert(
-                  "Dokumentasi (coming soon)\n\nNanti bisa diisi: sumber clause API 650, asumsi, definisi simbol, dan contoh kasus."
-                )
-              }
-            >
-              Dokumentasi
-            </button>
-          </div>
+                  <div className="rounded-2xl border border-black/10 bg-white/70 p-4">
+                    <div className="text-sm font-semibold text-[rgb(var(--re-ink))]">
+                      Modular roadmap
+                    </div>
+                    <div className="mt-1 text-sm re-muted">
+                      Shell → Bottom → Roof → Wind → Seismic → Nozzle (bertahap).
+                    </div>
+                  </div>
+                </div>
 
-          {/* EXTRA ROW: link kecil (biar ada “produk feel”) */}
-          <div className="mt-5 flex flex-wrap items-center gap-x-5 gap-y-2 text-xs re-muted">
-            <button
-              type="button"
-              className="hover:underline underline-offset-4"
-              onClick={() =>
-                alert(
-                  "Changelog (coming soon)\n\nNanti bisa isi: versi, perubahan rumus, perbaikan UI, dll."
-                )
-              }
-            >
-              Changelog
-            </button>
-            <button
-              type="button"
-              className="hover:underline underline-offset-4"
-              onClick={() =>
-                alert(
-                  "Roadmap (coming soon)\n\n• Bottom\n• Roof\n• Wind\n• Seismic\n• Nozzle reinforcement\n• Export PDF/Excel"
-                )
-              }
-            >
-              Roadmap
-            </button>
-            <span className="text-[10px] px-2 py-1 rounded-xl border border-black/10 bg-white/60">
-              Internal RE
-            </span>
-          </div>
+                <div className="mt-6 rounded-2xl border border-black/10 bg-white/60 p-4">
+                  <div className="text-xs re-muted">Quick note</div>
+                  <div className="mt-1 text-sm re-muted leading-relaxed">
+                    Mulai dari <strong>Shell</strong> dulu. Modul lain disiapin biar nanti tinggal
+                    “colok” rumus/clause tanpa bongkar UI.
+                  </div>
+                </div>
 
-          {/* BRAND DOTS */}
-          <div className="mt-8 flex items-center gap-3 text-xs re-muted">
-            <span className="h-2.5 w-2.5 rounded-full bg-[rgb(var(--re-blue))]" />
-            <span className="h-2.5 w-2.5 rounded-full bg-[rgb(var(--re-green))]" />
-            <span className="h-2.5 w-2.5 rounded-full bg-[rgb(var(--re-orange))]" />
-            <span>Engineering calculator platform</span>
+                <div className="mt-6 flex flex-wrap gap-2">
+                  <button
+                    type="button"
+                    className="px-4 py-2 rounded-2xl text-sm font-semibold
+                               border border-black/10 bg-white/70 hover:bg-white/90 transition"
+                    onClick={() =>
+                      alert(
+                        "Dokumentasi (coming soon)\n\nNanti bisa isi: clause reference, asumsi, definisi simbol, contoh kasus."
+                      )
+                    }
+                  >
+                    Dokumentasi
+                  </button>
+                  <button
+                    type="button"
+                    className="px-4 py-2 rounded-2xl text-sm font-semibold
+                               border border-black/10 bg-white/70 hover:bg-white/90 transition"
+                    onClick={() =>
+                      alert(
+                        "Support (coming soon)\n\nNanti bisa isi: cara lapor bug, request fitur, dll."
+                      )
+                    }
+                  >
+                    Support
+                  </button>
+                </div>
+              </div>
+            </div>
           </div>
         </section>
       </div>
 
-      {/* INFO MODAL (simple) */}
+      {/* INFO MODAL */}
       {openInfo ? (
         <div
           className="fixed inset-0 z-50 flex items-center justify-center p-4"
@@ -194,7 +261,7 @@ export default function Home() {
                 <ul className="mt-2 space-y-1 re-muted">
                   <li>• Unit SI / US</li>
                   <li>• Output per course + OK/NOT OK</li>
-                  <li>• Struktur modul sudah siap</li>
+                  <li>• Struktur modul siap</li>
                 </ul>
               </div>
               <div className="rounded-2xl border border-black/10 bg-white/55 p-4">
