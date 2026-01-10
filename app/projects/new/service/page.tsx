@@ -12,6 +12,7 @@ import {
   type DesignCaseKey,
   type ServiceDraft,
   type GeometryDraft,
+  type GeometryInputMode,
 } from "../../../../lib/storage/projectDraft";
 
 import {
@@ -21,6 +22,12 @@ import {
   inferPresetKeyFromCourses,
   type CoursePresetKey,
 } from "../../../../lib/api650/typicalGeometry";
+
+import {
+  calcNominalCapacity,
+  capacityUnitFor,
+  formatCapacity,
+} from "../../../../lib/api650/nominalCapacity";
 
 function StepPill({
   label,
@@ -80,7 +87,7 @@ function Modal({
         </div>
 
         <div className="mt-3 text-xs re-muted leading-relaxed">
-          Catatan: gambar tabel ini hanya referensi internal untuk pemilihan dimensi tipikal. Verifikasi tetap mengacu pada dokumen API 650 edisi yang dipakai.
+          Catatan: gambar tabel ini hanya referensi internal untuk pemilihan dimensi tipikal. Verifikasi desain tetap mengacu pada dokumen API 650/620 edisi yang dipakai.
         </div>
       </div>
     </div>
@@ -108,19 +115,27 @@ function getActiveCases(draft: ProjectDraft): DesignCaseKey[] {
   return (Object.keys(dc) as DesignCaseKey[]).filter((k) => dc[k]);
 }
 
+type Recommendation = {
+  diameter: number;
+  courses: number;
+  shellHeight: number;
+  capacity: number;
+  hit: "CEIL" | "MAX";
+};
+
 export default function NewProjectServicePage() {
   const router = useRouter();
 
   const [draft, setDraft] = useState<ProjectDraft | null>(null);
   const [hydrated, setHydrated] = useState(false);
 
-  // ===== Modal tabel =====
+  // modal tabel
   const [showTable, setShowTable] = useState(false);
 
   // ===== Service =====
   const [storedProduct, setStoredProduct] = useState("");
   const [sg, setSg] = useState<string>("1");
-  const [ca, setCa] = useState<string>("2"); // default SI
+  const [ca, setCa] = useState<string>("2");
 
   const [liquidHeights, setLiquidHeights] = useState<Record<DesignCaseKey, string>>({
     operating: "",
@@ -131,17 +146,20 @@ export default function NewProjectServicePage() {
     steamout: "0",
   });
 
-  // ===== Geometry berbasis tabel =====
+  // ===== Geometry =====
+  const [geomMode, setGeomMode] = useState<GeometryInputMode>("capacity");
+  const [targetCapacity, setTargetCapacity] = useState<string>("");
+
   const [presetKey, setPresetKey] = useState<CoursePresetKey>("SI_1800");
   const [diameterSel, setDiameterSel] = useState<string>("");
-  const [courseCountSel, setCourseCountSel] = useState<string>(""); // jumlah course
+  const [courseCountSel, setCourseCountSel] = useState<string>("");
 
   useEffect(() => {
     const d = loadProjectDraft();
     setDraft(d);
 
     if (d) {
-      // default by units
+      // defaults by units
       if (d.units === "US") {
         setCa("0.125");
         setPresetKey("US_72");
@@ -166,10 +184,13 @@ export default function NewProjectServicePage() {
         });
       }
 
-      // hydrate geometry (kalau sudah pernah diisi)
+      // hydrate geometry
       if (d.geometry) {
-        setDiameterSel(String(d.geometry.diameter ?? ""));
+        setGeomMode(d.geometry.inputMode ?? "capacity");
+        if (d.geometry.targetCapacity !== undefined) setTargetCapacity(String(d.geometry.targetCapacity));
+        if (d.geometry.presetKey) setPresetKey(d.geometry.presetKey as CoursePresetKey);
 
+        setDiameterSel(String(d.geometry.diameter ?? ""));
         const inferred = inferPresetKeyFromCourses(d.units, d.geometry.courses ?? []);
         if (inferred) setPresetKey(inferred);
 
@@ -181,8 +202,6 @@ export default function NewProjectServicePage() {
     setHydrated(true);
   }, []);
 
-  const activeCases = useMemo(() => (draft ? getActiveCases(draft) : []), [draft]);
-
   const presets = useMemo(() => {
     if (!draft) return [];
     return getPresetsByUnits(draft.units);
@@ -190,7 +209,6 @@ export default function NewProjectServicePage() {
 
   const preset = useMemo(() => getPresetByKey(presetKey), [presetKey]);
 
-  // if units berubah (harusnya gak sering), pastikan presetKey valid
   useEffect(() => {
     if (!draft) return;
     const valid = presets.some((p) => p.key === presetKey);
@@ -202,8 +220,11 @@ export default function NewProjectServicePage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [draft?.units]);
 
+  const activeCases = useMemo(() => (draft ? getActiveCases(draft) : []), [draft]);
+
   const lengthUnit = useMemo(() => (draft?.units === "US" ? "ft" : "m"), [draft]);
   const caUnit = useMemo(() => (draft?.units === "US" ? "in" : "mm"), [draft]);
+  const capUnitLabel = useMemo(() => (draft?.units === "US" ? "barrels (bbl)" : "m³"), [draft]);
 
   const diameters = useMemo(() => {
     if (!draft) return [];
@@ -229,10 +250,64 @@ export default function NewProjectServicePage() {
     return Array.from({ length: selectedCourseCount }, () => preset.courseHeight);
   }, [preset, selectedCourseCount]);
 
+  const currentCapacity = useMemo(() => {
+    if (!draft) return NaN;
+    const D = toNumberOrNaN(diameterSel);
+    if (!Number.isFinite(D) || !Number.isFinite(shellHeight)) return NaN;
+    return calcNominalCapacity(draft.units, D, shellHeight);
+  }, [draft, diameterSel, shellHeight]);
+
+  const recommendation = useMemo<Recommendation | null>(() => {
+    if (!draft || !preset) return null;
+    if (geomMode !== "capacity") return null;
+
+    const target = toNumberOrNaN(targetCapacity);
+    if (!Number.isFinite(target) || target <= 0) return null;
+
+    // generate candidates from grid (diameter list + height options)
+    const candidates: Recommendation[] = [];
+    for (const D of diameters) {
+      for (const opt of heightOptions) {
+        const cap = calcNominalCapacity(draft.units, D, opt.shellHeight);
+        if (!Number.isFinite(cap)) continue;
+        candidates.push({
+          diameter: D,
+          courses: opt.courses,
+          shellHeight: opt.shellHeight,
+          capacity: cap,
+          hit: "CEIL",
+        });
+      }
+    }
+
+    if (candidates.length === 0) return null;
+
+    candidates.sort((a, b) => {
+      if (a.capacity !== b.capacity) return a.capacity - b.capacity;
+      if (a.diameter !== b.diameter) return a.diameter - b.diameter;
+      return a.shellHeight - b.shellHeight;
+    });
+
+    const ceil = candidates.find((c) => c.capacity >= target);
+    if (ceil) return ceil;
+
+    // kalau target lebih besar dari semua opsi, kasih max available
+    const max = candidates[candidates.length - 1];
+    return { ...max, hit: "MAX" };
+  }, [draft, preset, geomMode, targetCapacity, diameters, heightOptions]);
+
+  // AUTO-APPLY rekomendasi (sesuai request “otomatis kasih rekomendasi D/H/#course”)
+  useEffect(() => {
+    if (geomMode !== "capacity") return;
+    if (!recommendation) return;
+
+    setDiameterSel(String(recommendation.diameter));
+    setCourseCountSel(String(recommendation.courses));
+  }, [geomMode, recommendation]);
+
   const fillDefaultsFromShellHeight = () => {
     if (!Number.isFinite(shellHeight) || shellHeight <= 0) return;
 
-    // default: operating 90% shell, hydrotest 100%, empty 0
     const op = Math.max(0, 0.9 * shellHeight);
     const ht = shellHeight;
 
@@ -251,7 +326,7 @@ export default function NewProjectServicePage() {
     const w: string[] = [];
 
     if (draft?.recommendedStandard === "API_620") {
-      w.push("Project Anda terpilih API 620. Pemilihan geometry di sini memakai tabel tipikal API 650 sebagai referensi dimensi, bukan sebagai rule desain API 620.");
+      w.push("Project terdeteksi API 620. Geometry tipikal di step ini tetap boleh dipakai sebagai starting point, tapi tabel tipikal ini berasal dari API 650 (reference).");
     }
 
     if (Number.isFinite(shellHeight)) {
@@ -277,15 +352,22 @@ export default function NewProjectServicePage() {
     if (!Number.isFinite(caN) || caN < 0) e.push("Corrosion allowance (CA) wajib diisi dan ≥ 0.");
 
     const D = toNumberOrNaN(diameterSel);
-    if (!Number.isFinite(D) || D <= 0) e.push("Diameter wajib dipilih dari tabel.");
-    if (Number.isFinite(D) && draft) {
+    if (!Number.isFinite(D) || D <= 0) e.push("Diameter belum terpilih/terdefinisi.");
+
+    if (draft && Number.isFinite(D)) {
       const allowed = API650_DIAMETERS[draft.units].includes(D);
       if (!allowed) e.push("Diameter yang dipilih tidak ada di daftar diameter tipikal API 650.");
     }
 
     if (!preset) e.push("Preset course tidak valid.");
-    if (!courseCountSel.trim()) e.push("Tank height / jumlah course wajib dipilih.");
-    if (!Number.isFinite(shellHeight) || shellHeight <= 0) e.push("Shell height tidak valid (hasil dari preset + jumlah course).");
+    if (!courseCountSel.trim()) e.push("Tank height / jumlah course wajib dipilih/terdefinisi.");
+    if (!Number.isFinite(shellHeight) || shellHeight <= 0) e.push("Shell height tidak valid.");
+
+    // capacity mode: capacity wajib diisi
+    if (geomMode === "capacity") {
+      const tcap = toNumberOrNaN(targetCapacity);
+      if (!Number.isFinite(tcap) || tcap <= 0) e.push(`Target capacity wajib diisi (angka > 0, unit: ${capUnitLabel}).`);
+    }
 
     // liquid heights wajib minimal operating/hydrotest jika case aktif
     if (draft) {
@@ -308,7 +390,7 @@ export default function NewProjectServicePage() {
     }
 
     return e;
-  }, [draft, sg, ca, diameterSel, preset, courseCountSel, shellHeight, liquidHeights]);
+  }, [draft, sg, ca, diameterSel, preset, courseCountSel, shellHeight, geomMode, targetCapacity, capUnitLabel, liquidHeights]);
 
   const canContinue = hydrated && errors.length === 0;
 
@@ -334,10 +416,18 @@ export default function NewProjectServicePage() {
       liquidHeights: lh,
     };
 
+    const capUnit = capacityUnitFor(draft.units);
+    const tcapN = toNumberOrNaN(targetCapacity);
+
     const geometry: GeometryDraft = {
       diameter: D,
       shellHeight: shellHeight,
       courses: coursesArray,
+
+      inputMode: geomMode,
+      presetKey: presetKey,
+      targetCapacity: geomMode === "capacity" && Number.isFinite(tcapN) ? tcapN : undefined,
+      targetCapacityUnit: geomMode === "capacity" ? (capUnit as any) : undefined,
     };
 
     updateProjectDraft({ service, geometry });
@@ -429,8 +519,7 @@ export default function NewProjectServicePage() {
             </h1>
 
             <p className="mt-2 text-sm md:text-base re-muted leading-relaxed">
-              Di step ini, geometri tank (D, Hshell, jumlah course) dipilih dari preset tipikal API 650 berdasarkan
-              <strong> course height</strong>. Ini bikin input konsisten dan gampang direview.
+              Geometri tank diturunkan dari grid tipikal (diameter + jumlah course). Mode <strong>Capacity</strong> akan memilih kombinasi terdekat dengan pendekatan ke atas.
             </p>
 
             {/* SERVICE */}
@@ -462,7 +551,7 @@ export default function NewProjectServicePage() {
                 </label>
 
                 <label className="block">
-                  <div className="text-sm font-semibold text-[rgb(var(--re-ink))]">
+                  <div className="text-sm font-semibold text-[rgb(var(--re-ink))]}>
                     Corrosion allowance (CA) * ({caUnit})
                   </div>
                   <input
@@ -478,13 +567,13 @@ export default function NewProjectServicePage() {
               </div>
             </div>
 
-            {/* GEOMETRY - TABLE DRIVEN */}
+            {/* GEOMETRY */}
             <div className="mt-6 rounded-2xl border border-black/10 bg-white/60 p-5">
               <div className="flex flex-wrap items-center justify-between gap-3">
                 <div>
-                  <div className="text-sm font-semibold text-[rgb(var(--re-blue))]">Geometry (berdasarkan tabel API 650)</div>
+                  <div className="text-sm font-semibold text-[rgb(var(--re-blue))]">Geometry (berdasarkan tabel tipikal)</div>
                   <div className="mt-1 text-sm re-muted">
-                    Pilih course height → pilih diameter → pilih tank height/jumlah course.
+                    Mode Capacity: input capacity → sistem pilih D/H/courses (ceil). Mode Manual: pilih sendiri dari grid.
                   </div>
                 </div>
 
@@ -494,6 +583,37 @@ export default function NewProjectServicePage() {
                   className="px-4 py-2 rounded-2xl text-sm font-semibold border border-black/10 bg-white/70 hover:bg-white/90 transition"
                 >
                   Lihat tabel API 650
+                </button>
+              </div>
+
+              {/* MODE TOGGLE */}
+              <div className="mt-4 flex flex-wrap gap-2">
+                <button
+                  type="button"
+                  onClick={() => setGeomMode("capacity")}
+                  className={[
+                    "px-4 py-2 rounded-2xl text-sm font-semibold border transition",
+                    "border-black/10",
+                    geomMode === "capacity"
+                      ? "bg-white shadow-sm text-[rgb(var(--re-blue))]"
+                      : "bg-white/60 hover:bg-white/80 re-muted",
+                  ].join(" ")}
+                >
+                  Mode: Capacity
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => setGeomMode("manual")}
+                  className={[
+                    "px-4 py-2 rounded-2xl text-sm font-semibold border transition",
+                    "border-black/10",
+                    geomMode === "manual"
+                      ? "bg-white shadow-sm text-[rgb(var(--re-blue))]"
+                      : "bg-white/60 hover:bg-white/80 re-muted",
+                  ].join(" ")}
+                >
+                  Mode: Manual
                 </button>
               </div>
 
@@ -517,15 +637,44 @@ export default function NewProjectServicePage() {
                   </select>
                 </label>
 
+                {/* CAPACITY INPUT */}
+                {geomMode === "capacity" ? (
+                  <label className="block">
+                    <div className="text-sm font-semibold text-[rgb(var(--re-ink))]}>
+                      Target capacity * ({capUnitLabel})
+                    </div>
+                    <input
+                      type="number"
+                      inputMode="decimal"
+                      step="any"
+                      value={targetCapacity}
+                      onChange={(e) => setTargetCapacity(e.target.value)}
+                      placeholder={draft.units === "US" ? "Contoh: 50000" : "Contoh: 5000"}
+                      className="mt-2 w-full rounded-2xl border border-black/10 bg-white/90 px-4 py-3 text-sm outline-none focus:ring-2 focus:ring-black/10"
+                    />
+                    <div className="mt-2 text-xs re-muted">
+                      Nominal capacity dihitung sebagai volume silinder (tanpa roof/bottom): C = π/4 · D² · H.
+                    </div>
+                  </label>
+                ) : (
+                  <div className="rounded-2xl border border-black/10 bg-white/70 p-4">
+                    <div className="text-sm font-semibold text-[rgb(var(--re-blue))]">Tip</div>
+                    <div className="mt-2 text-sm re-muted">
+                      Kalau lo mau auto pilih D/H dari target kapasitas, pindah ke <strong>Mode: Capacity</strong>.
+                    </div>
+                  </div>
+                )}
+
                 {/* Diameter */}
                 <label className="block">
-                  <div className="text-sm font-semibold text-[rgb(var(--re-ink))]">
+                  <div className="text-sm font-semibold text-[rgb(var(--re-ink))]}>
                     Diameter tank (D) * ({lengthUnit})
                   </div>
                   <select
                     value={diameterSel}
                     onChange={(e) => setDiameterSel(e.target.value)}
-                    className="mt-2 w-full rounded-2xl border border-black/10 bg-white/90 px-4 py-3 text-sm outline-none focus:ring-2 focus:ring-black/10"
+                    disabled={geomMode === "capacity" && Boolean(recommendation)} // auto
+                    className="mt-2 w-full rounded-2xl border border-black/10 bg-white/90 px-4 py-3 text-sm outline-none focus:ring-2 focus:ring-black/10 disabled:opacity-60"
                   >
                     <option value="">Pilih diameter...</option>
                     {diameters.map((d) => (
@@ -534,51 +683,71 @@ export default function NewProjectServicePage() {
                       </option>
                     ))}
                   </select>
+                  {geomMode === "capacity" && recommendation ? (
+                    <div className="mt-2 text-xs re-muted">Di mode Capacity, diameter dipilih otomatis dari rekomendasi.</div>
+                  ) : null}
                 </label>
 
                 {/* Height / courses */}
                 <label className="block md:col-span-2">
-                  <div className="text-sm font-semibold text-[rgb(var(--re-ink))]">
+                  <div className="text-sm font-semibold text-[rgb(var(--re-ink))]}>
                     Tank height / jumlah course * ({lengthUnit})
                   </div>
                   <select
                     value={courseCountSel}
                     onChange={(e) => setCourseCountSel(e.target.value)}
-                    className="mt-2 w-full rounded-2xl border border-black/10 bg-white/90 px-4 py-3 text-sm outline-none focus:ring-2 focus:ring-black/10"
+                    disabled={geomMode === "capacity" && Boolean(recommendation)}
+                    className="mt-2 w-full rounded-2xl border border-black/10 bg-white/90 px-4 py-3 text-sm outline-none focus:ring-2 focus:ring-black/10 disabled:opacity-60"
                   >
                     <option value="">Pilih tinggi/jumlah course...</option>
                     {heightOptions.map((o) => (
                       <option key={o.courses} value={String(o.courses)}>
-                        H = {o.shellHeight} {lengthUnit}  ({o.courses} courses @ {preset?.courseHeight} {lengthUnit})
+                        H = {o.shellHeight} {lengthUnit} ({o.courses} courses @ {preset?.courseHeight} {lengthUnit})
                       </option>
                     ))}
                   </select>
-
-                  <div className="mt-2 text-xs re-muted">
-                    Setelah dipilih, course table akan otomatis jadi seragam sesuai preset.
-                  </div>
+                  {geomMode === "capacity" && recommendation ? (
+                    <div className="mt-2 text-xs re-muted">Di mode Capacity, jumlah course dipilih otomatis dari rekomendasi.</div>
+                  ) : null}
                 </label>
               </div>
 
-              {/* Geometry preview */}
+              {/* RECOMMENDATION CARD */}
+              {geomMode === "capacity" && recommendation ? (
+                <div className="mt-5 rounded-2xl border border-black/10 bg-white/70 p-4">
+                  <div className="text-sm font-semibold text-[rgb(var(--re-blue))]">Rekomendasi (ceil)</div>
+                  <div className="mt-2 text-sm re-muted leading-relaxed">
+                    <div><strong className="text-[rgb(var(--re-ink))]">Target:</strong> {formatCapacity(draft.units, toNumberOrNaN(targetCapacity))}</div>
+                    <div>
+                      <strong className="text-[rgb(var(--re-ink))]">Dipilih:</strong>{" "}
+                      D = {recommendation.diameter} {lengthUnit}, H = {recommendation.shellHeight} {lengthUnit}, courses = {recommendation.courses}
+                    </div>
+                    <div>
+                      <strong className="text-[rgb(var(--re-ink))]">Nominal capacity:</strong>{" "}
+                      {formatCapacity(draft.units, recommendation.capacity)}{" "}
+                      {recommendation.hit === "MAX" ? (
+                        <span className="text-[rgb(var(--re-orange))] font-semibold">(maksimum tersedia)</span>
+                      ) : null}
+                    </div>
+                  </div>
+
+                  <div className="mt-3 text-xs re-muted">
+                    Kalau lo mau override, pindah ke <strong>Mode: Manual</strong>.
+                  </div>
+                </div>
+              ) : null}
+
+              {/* PREVIEW */}
               <div className="mt-5 rounded-2xl border border-black/10 bg-white/70 p-4">
                 <div className="text-sm font-semibold text-[rgb(var(--re-blue))]">Preview geometry</div>
                 <div className="mt-2 text-sm re-muted leading-relaxed">
-                  <div>
-                    <strong className="text-[rgb(var(--re-ink))]">D:</strong>{" "}
-                    {diameterSel ? `${diameterSel} ${lengthUnit}` : "-"}
-                  </div>
-                  <div>
-                    <strong className="text-[rgb(var(--re-ink))]">Hshell:</strong>{" "}
-                    {Number.isFinite(shellHeight) ? `${shellHeight} ${lengthUnit}` : "-"}
-                  </div>
-                  <div>
-                    <strong className="text-[rgb(var(--re-ink))]">Jumlah course:</strong>{" "}
-                    {Number.isFinite(selectedCourseCount) ? selectedCourseCount : "-"}
-                  </div>
-                  <div>
-                    <strong className="text-[rgb(var(--re-ink))]">Course height:</strong>{" "}
-                    {preset ? `${preset.courseHeight} ${lengthUnit}` : "-"}
+                  <div><strong className="text-[rgb(var(--re-ink))]">D:</strong> {diameterSel ? `${diameterSel} ${lengthUnit}` : "-"}</div>
+                  <div><strong className="text-[rgb(var(--re-ink))]">Hshell:</strong> {Number.isFinite(shellHeight) ? `${shellHeight} ${lengthUnit}` : "-"}</div>
+                  <div><strong className="text-[rgb(var(--re-ink))]">Jumlah course:</strong> {Number.isFinite(selectedCourseCount) ? selectedCourseCount : "-"}</div>
+                  <div><strong className="text-[rgb(var(--re-ink))]">Course height:</strong> {preset ? `${preset.courseHeight} ${lengthUnit}` : "-"}</div>
+                  <div className="mt-2">
+                    <strong className="text-[rgb(var(--re-ink))]">Nominal capacity (selected):</strong>{" "}
+                    {Number.isFinite(currentCapacity) ? formatCapacity(draft.units, currentCapacity) : "-"}
                   </div>
                 </div>
 
@@ -593,7 +762,7 @@ export default function NewProjectServicePage() {
             {/* CASE HEIGHTS */}
             <div className="mt-6 rounded-2xl border border-black/10 bg-white/60 p-5">
               <div className="flex flex-wrap items-center justify-between gap-3">
-                <div className="text-sm font-semibold text-[rgb(var(--re-blue))]">
+                <div className="text-sm font-semibold text-[rgb(var(--re-blue))]}>
                   Liquid height per design case
                 </div>
                 <button
@@ -702,9 +871,11 @@ export default function NewProjectServicePage() {
               <div className="mt-4">
                 <strong className="text-[rgb(var(--re-ink))]">Geometry:</strong>
                 <ul className="mt-2 list-disc pl-5">
+                  <li>Mode: {geomMode === "capacity" ? "Capacity" : "Manual"}</li>
                   <li>D: {diameterSel ? `${diameterSel} ${lengthUnit}` : "-"}</li>
                   <li>Hshell: {Number.isFinite(shellHeight) ? `${shellHeight} ${lengthUnit}` : "-"}</li>
                   <li>Courses: {Number.isFinite(selectedCourseCount) ? selectedCourseCount : "-"}</li>
+                  <li>Nominal capacity: {Number.isFinite(currentCapacity) ? formatCapacity(draft.units, currentCapacity) : "-"}</li>
                 </ul>
               </div>
             </div>
