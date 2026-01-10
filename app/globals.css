@@ -19,13 +19,6 @@ html, body {
     linear-gradient(180deg, #f8fcff, #eef6fc);
 }
 
-.re-card{
-  background: rgba(255,255,255,0.82);
-  border: 1px solid rgba(15,23,42,0.10);
-  box-shadow: 0 12px 30px rgba(2,8,23,0.08);
-  backdrop-filter: blur(10px);
-}
-
 .re-muted{
   color: rgba(var(--re-ink), 0.72);
 }
@@ -45,6 +38,16 @@ html, body {
     linear-gradient(45deg, rgba(var(--re-blue),0.06) 25%, transparent 25%) 0 0/80px 80px;
   opacity: .55;
   pointer-events: none;
+}
+
+/* ===============================
+   Glass card (untuk panel kiri)
+================================ */
+.re-card{
+  background: rgba(255,255,255,0.82);
+  border: 1px solid rgba(15,23,42,0.10);
+  box-shadow: 0 12px 30px rgba(2,8,23,0.08);
+  backdrop-filter: blur(10px);
 }
 
 /* ===============================
@@ -68,7 +71,7 @@ html, body {
 }
 
 /* ===============================
-   Tinted buttons (optional, subtle)
+   Tinted buttons (subtle)
 ================================ */
 .re-btn-blue{
   background: rgba(var(--re-blue), 0.07);
@@ -83,92 +86,64 @@ html, body {
 .re-btn-green:hover{ background: rgba(var(--re-green), 0.13); }
 
 /* ===============================
-   Right Panel: tinted + shapes
-   (biar panel kanan gak polos + ada ornament)
+   RIGHT PANEL (Keluar dari glass biar warnanya muncul)
 ================================ */
-.re-panel-shapes{
+.re-right{
   position: relative;
   overflow: hidden;
-  border-radius: 1.75rem;
-  background:
-    radial-gradient(900px 520px at 85% 0%, rgba(var(--re-blue),0.14), transparent 60%),
-    radial-gradient(900px 520px at 0% 90%, rgba(var(--re-green),0.12), transparent 60%),
-    linear-gradient(180deg, rgba(255,255,255,0.55), rgba(255,255,255,0.35));
+  border-radius: 2rem;
   border: 1px solid rgba(15,23,42,0.10);
-  box-shadow: 0 14px 34px rgba(2,8,23,0.08);
+  box-shadow: 0 16px 38px rgba(2,8,23,0.10);
+  background:
+    radial-gradient(900px 560px at 88% 0%, rgba(var(--re-blue),0.22), transparent 60%),
+    radial-gradient(900px 560px at 0% 100%, rgba(var(--re-green),0.18), transparent 62%),
+    radial-gradient(650px 420px at 100% 65%, rgba(var(--re-orange),0.14), transparent 65%),
+    linear-gradient(180deg, rgba(255,255,255,0.72), rgba(255,255,255,0.42));
   backdrop-filter: blur(10px);
 }
 
-/* Blob biru */
-.re-panel-shapes::before{
+/* engineering grid tipis */
+.re-right::before{
   content:"";
   position:absolute;
-  width: 560px;
-  height: 560px;
-  top: -240px;
-  right: -260px;
-  background: radial-gradient(
-    closest-side,
-    rgba(var(--re-blue),0.26),
-    rgba(var(--re-blue),0.00) 72%
-  );
-  pointer-events: none;
-  filter: blur(0px);
-}
-
-/* Blob hijau */
-.re-panel-shapes::after{
-  content:"";
-  position:absolute;
-  width: 560px;
-  height: 560px;
-  bottom: -280px;
-  left: -280px;
-  background: radial-gradient(
-    closest-side,
-    rgba(var(--re-green),0.22),
-    rgba(var(--re-green),0.00) 74%
-  );
-  pointer-events: none;
-}
-
-/* Accent blob orange (elemen shape tambahan) */
-.re-panel-accent{
-  position: absolute;
-  width: 200px;
-  height: 200px;
-  top: 55%;
-  right: -100px;
-  background: radial-gradient(
-    closest-side,
-    rgba(var(--re-orange),0.22),
-    rgba(var(--re-orange),0.00) 72%
-  );
-  pointer-events: none;
-}
-
-/* Grid halus biar "engineering feel" */
-.re-panel-grid{
-  position: absolute;
-  inset: 0;
+  inset:0;
   background:
-    linear-gradient(rgba(15,23,42,0.05) 1px, transparent 1px) 0 0 / 28px 28px,
-    linear-gradient(90deg, rgba(15,23,42,0.05) 1px, transparent 1px) 0 0 / 28px 28px;
-  opacity: 0.35;
-  pointer-events: none;
-  mask-image: radial-gradient(circle at 50% 40%, black 40%, transparent 75%);
+    linear-gradient(rgba(15,23,42,0.06) 1px, transparent 1px) 0 0/28px 28px,
+    linear-gradient(90deg, rgba(15,23,42,0.06) 1px, transparent 1px) 0 0/28px 28px;
+  opacity: .35;
+  pointer-events:none;
+  mask-image: radial-gradient(circle at 52% 35%, black 42%, transparent 78%);
 }
 
-/* Content di atas shapes */
-.re-panel-content{
+.re-right-content{
   position: relative;
   z-index: 1;
 }
 
-/* Card item di dalam panel (glass) */
-.re-panel-item{
-  background: rgba(255,255,255,0.76);
+/* cards di dalam panel kanan: glass kecil + accent bar */
+.re-right-item{
+  position: relative;
+  background: rgba(255,255,255,0.78);
   border: 1px solid rgba(15,23,42,0.10);
+  border-radius: 1.25rem;
   box-shadow: 0 10px 22px rgba(2,8,23,0.06);
   backdrop-filter: blur(8px);
 }
+
+/* accent stripe di kiri card */
+.re-right-item::before{
+  content:"";
+  position:absolute;
+  left: 12px;
+  top: 14px;
+  bottom: 14px;
+  width: 4px;
+  border-radius: 999px;
+  background: rgba(var(--re-blue),0.55);
+  opacity: .9;
+}
+
+/* variasi accent per card */
+.re-accent-blue::before{ background: rgba(var(--re-blue),0.60); }
+.re-accent-green::before{ background: rgba(var(--re-green),0.60); }
+.re-accent-orange::before{ background: rgba(var(--re-orange),0.65); }
