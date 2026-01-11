@@ -4,7 +4,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 
-// ✅ FIX PATH (4 level, bukan 3)
+// ✅ FIX PATH (4 level)
 import {
   loadProjectDraft,
   updateProjectDraft,
@@ -28,9 +28,7 @@ function StepPill({
         : "bg-white/60 re-muted";
 
   return (
-    <span
-      className={`px-3 py-1.5 rounded-2xl text-xs font-semibold border border-black/10 ${cls}`}
-    >
+    <span className={`px-3 py-1.5 rounded-2xl text-xs font-semibold border border-black/10 ${cls}`}>
       {label}
     </span>
   );
@@ -53,41 +51,69 @@ export default function ResultsPage() {
 
   const calc = useMemo(() => {
     if (!draft) return null;
-
-    // Guard minimal data
     if (!draft.geometry || !draft.service || !draft.materials) return null;
 
     const units = draft.units;
-    const standard = draft.recommendedStandard ?? "API_650";
+    const standard = (draft.recommendedStandard ?? "API_650") as any;
 
     const diameter = draft.geometry.diameter ?? NaN;
     const courses = draft.geometry.courses ?? [];
 
+    if (!Number.isFinite(diameter) || diameter <= 0) return null;
+    if (!Array.isArray(courses) || courses.length === 0) return null;
+
     const specificGravity = draft.service.specificGravity ?? 1;
     const corrosionAllowance = draft.service.corrosionAllowance ?? (units === "US" ? 0.125 : 2);
 
-    const designPressure = draft.envelope?.designPressure ?? 0;
+    const designPressure = (draft as any).envelope?.designPressure ?? 0;
 
-    const allowableStressDesign = draft.materials.allowableStressDesign ?? (units === "US" ? 20000 : 137);
-    const allowableStressTest = draft.materials.allowableStressTest ?? (units === "US" ? 21000 : 154);
-    const jointEfficiency = draft.materials.jointEfficiency ?? 0.85;
+    const allowableStressDesign =
+      (draft.materials as any).allowableStressDesign ?? (units === "US" ? 20000 : 137);
+    const allowableStressTest =
+      (draft.materials as any).allowableStressTest ?? (units === "US" ? 21000 : 154);
+    const jointEfficiency = (draft.materials as any).jointEfficiency ?? 0.85;
 
-    const minNominalThickness = draft.materials.minNominalThickness ?? (units === "US" ? 0.25 : 5);
+    const minNominalThickness =
+      (draft.materials as any).minNominalThickness ?? (units === "US" ? 0.25 : 5);
 
-    const adoptedThicknesses = draft.materials.adoptedThicknesses ?? [];
+    // ✅ FIX: MaterialsDraft di project lo mungkin nggak punya "adoptedThicknesses"
+    // jadi ambil dari beberapa kemungkinan field, pake any biar TS aman.
+    const m: any = draft.materials as any;
 
-    const activeCases = (draft.designCases
-      ? (Object.keys(draft.designCases) as any[]).filter((k) => draft.designCases?.[k])
-      : ["operating"]
-    ).map((k) => ({
+    const adoptedFromDraft: unknown =
+      m.adoptedThicknesses ??
+      m.adoptedThickness ?? // kadang orang namain gini
+      m.adoptedThicknessPerCourse ??
+      m.adoptedThicknessesPerCourse ??
+      m.thicknesses ?? // fallback nama generik
+      m.courseThicknesses;
+
+    let adoptedThicknesses: number[] = Array.isArray(adoptedFromDraft)
+      ? adoptedFromDraft.map((x) => Number(x))
+      : [];
+
+    // kalau panjangnya nggak match jumlah course, fallback default biar engine tetap jalan
+    const minWithCA = Number(minNominalThickness) + Number(corrosionAllowance);
+    if (adoptedThicknesses.length !== courses.length) {
+      adoptedThicknesses = Array.from({ length: courses.length }, () => minWithCA);
+    }
+
+    // active cases
+    const activeCaseKeys: any[] = draft.designCases
+      ? (Object.keys(draft.designCases) as any[]).filter((k) => (draft.designCases as any)?.[k])
+      : ["operating"];
+
+    const liquidHeights = (draft.service as any).liquidHeights ?? {};
+
+    const activeCases = activeCaseKeys.map((k) => ({
       key: k,
-      liquidHeight: draft.service?.liquidHeights?.[k] ?? 0,
+      liquidHeight: Number(liquidHeights?.[k] ?? 0),
     }));
 
     try {
       return runShellThickness({
         units,
-        standard: standard as any,
+        standard,
 
         diameter,
         courses,
@@ -121,19 +147,17 @@ export default function ResultsPage() {
     if (!calc) return;
     const rows = [
       ["Course", "GoverningCase", "t_calc", "t_required", "t_adopted", "Utilization", "Status"].join(","),
-      ...calc.results.map((r) => {
-        const unit = calc.units === "SI" ? "mm" : "in";
-        const tcalc = r.tCalcGoverning;
-        return [
+      ...calc.results.map((r) =>
+        [
           r.courseNo,
           r.governingCase,
-          fmt(tcalc, 4),
+          fmt(r.tCalcGoverning, 4),
           fmt(r.tRequired, 4),
           fmt(r.tAdopted, 4),
           fmt(r.utilization, 4),
           r.status,
-        ].join(",");
-      }),
+        ].join(",")
+      ),
     ].join("\n");
 
     const blob = new Blob([rows], { type: "text/csv;charset=utf-8;" });
@@ -147,7 +171,7 @@ export default function ResultsPage() {
   };
 
   const handleExportPDF = () => {
-    window.print(); // paling aman dulu: print dialog → Save as PDF
+    window.print();
   };
 
   if (!hydrated) {
@@ -191,7 +215,7 @@ export default function ResultsPage() {
               Data belum lengkap untuk menghitung shell thickness.
             </div>
             <div className="mt-3 text-sm re-muted">
-              Pastikan Step 0–3 sudah terisi: envelope, service, geometry, dan materials.
+              Pastikan Step 0–3 sudah terisi: service, geometry, dan materials.
             </div>
 
             <div className="mt-5 flex flex-wrap gap-2">
@@ -248,7 +272,6 @@ export default function ResultsPage() {
             >
               Kembali (Step 3)
             </Link>
-
             <Link
               href="/projects/saved"
               className="px-4 py-2 rounded-2xl text-sm font-semibold border border-black/10 bg-white/70 hover:bg-white/90 transition"
@@ -267,17 +290,13 @@ export default function ResultsPage() {
           <StepPill label="Step 4 • Results" state="active" />
         </div>
 
-        {/* TITLE + SUMMARY */}
         <div className="mt-8 grid grid-cols-1 lg:grid-cols-12 gap-8 lg:gap-10">
+          {/* LEFT */}
           <div className="lg:col-span-8 re-card rounded-[2rem] p-7 md:p-9">
             <div className="text-xs re-muted">Ringkasan hasil</div>
             <h1 className="mt-2 text-2xl md:text-3xl font-extrabold tracking-tight text-[rgb(var(--re-ink))]">
               Shell Thickness — OK/NOT OK per Course
             </h1>
-            <p className="mt-2 text-sm md:text-base re-muted leading-relaxed">
-              Output fokus pada <strong>t_calc</strong> (hasil rumus) vs <strong>t_required</strong> (sesudah min thickness + CA),
-              governing case, dan status OK/NOT OK.
-            </p>
 
             {/* ACTIONS */}
             <div className="mt-6 rounded-2xl border border-black/10 bg-white/60 p-5">
@@ -310,7 +329,7 @@ export default function ResultsPage() {
               </div>
 
               <div className="mt-3 text-xs re-muted">
-                PDF export memakai print dialog browser (pilih “Save as PDF”). Excel export berupa CSV.
+                PDF export pakai print dialog browser (Save as PDF). Excel export berupa CSV.
               </div>
             </div>
 
@@ -346,7 +365,10 @@ export default function ResultsPage() {
                   <tbody className="divide-y divide-black/10">
                     {calc.results.map((r) => (
                       <tr key={r.courseNo} className="hover:bg-white/60 transition">
-                        <td className="px-4 py-3 font-semibold text-[rgb(var(--re-ink))]">{r.courseNo}</td>
+                        <td className="px-4 py-3 font-semibold text-[rgb(var(--re-ink))]">
+                          {r.courseNo}
+                        </td>
+
                         <td className="px-4 py-3 re-muted">{r.governingCase}</td>
 
                         <td className="px-4 py-3 text-[rgb(var(--re-blue))] font-semibold">
@@ -404,7 +426,7 @@ export default function ResultsPage() {
             </div>
           </div>
 
-          {/* RIGHT SUMMARY CARD */}
+          {/* RIGHT */}
           <div className="lg:col-span-4 re-card rounded-[2rem] p-6 md:p-7">
             <div className="text-xs re-muted">Ringkasan project</div>
             <div className="mt-1 text-lg font-semibold text-[rgb(var(--re-blue))]">Project</div>
@@ -420,13 +442,6 @@ export default function ResultsPage() {
               <div className="mt-2">
                 Karena engine apply: <strong>t_required = max(t_calc, minNominal + CA)</strong>.
                 Kalau semua <strong>t_calc</strong> lebih kecil dari min, hasilnya bakal sama (ketahan min).
-              </div>
-              <div className="mt-3">
-                Di tabel, lo bisa bedain:
-                <ul className="mt-2 list-disc pl-5">
-                  <li><strong>t_calc</strong>: hasil rumus (trend fisika)</li>
-                  <li><strong>t_required</strong>: hasil final setelah aturan minimum</li>
-                </ul>
               </div>
             </div>
           </div>
