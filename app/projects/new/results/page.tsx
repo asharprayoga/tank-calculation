@@ -343,7 +343,7 @@ export default function ResultsPage() {
                         <td className="px-4 py-3 re-muted">{r.governingCase}</td>
 
                         <td className="px-4 py-3 text-[rgb(var(--re-blue))] font-semibold">
-                          {fmt(r.tCalcGoverning, 2)}
+                          {fmt(r.tCalc, 2)}
                         </td>
 
                         <td className="px-4 py-3 text-[rgb(var(--re-blue))] font-semibold">
