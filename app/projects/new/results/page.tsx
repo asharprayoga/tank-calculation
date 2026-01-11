@@ -4,12 +4,14 @@ import Image from "next/image";
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 
+// ✅ FIX PATH (4 level, bukan 3)
 import {
   loadProjectDraft,
+  updateProjectDraft,
   type ProjectDraft,
-} from "../../../lib/storage/projectDraft";
+} from "../../../../lib/storage/projectDraft";
 
-import { runShellThickness } from "../../../lib/engine/shellThickness";
+import { runShellThickness } from "../../../../lib/engine/shellThickness";
 
 function StepPill({
   label,
@@ -34,43 +36,45 @@ function StepPill({
   );
 }
 
-const fmt = (x: number, digits = 2) =>
-  Number.isFinite(x) ? x.toFixed(digits) : "-";
+const fmt = (x: number, dp = 2) => {
+  if (!Number.isFinite(x)) return "-";
+  return x.toFixed(dp);
+};
 
 export default function ResultsPage() {
   const [draft, setDraft] = useState<ProjectDraft | null>(null);
   const [hydrated, setHydrated] = useState(false);
 
-  const [showCalc, setShowCalc] = useState(true);
-
   useEffect(() => {
-    setDraft(loadProjectDraft());
+    const d = loadProjectDraft();
+    setDraft(d);
     setHydrated(true);
   }, []);
 
-  const units = draft?.units ?? "SI";
-  const lengthUnit = units === "US" ? "ft" : "m";
-  const thickUnit = units === "US" ? "in" : "mm";
-
-  const minWithCA = useMemo(() => {
-    const ca = draft?.service?.corrosionAllowance;
-    const minNom = draft?.materials?.minNominalThickness;
-    if (!Number.isFinite(ca as number) || !Number.isFinite(minNom as number)) return NaN;
-    return (minNom as number) + (ca as number);
-  }, [draft]);
-
-  const engineResult = useMemo(() => {
+  const calc = useMemo(() => {
     if (!draft) return null;
 
-    // minimal guard supaya ga nge-crash
-    if (!draft.geometry?.diameter) return null;
-    if (!draft.geometry?.courses?.length) return null;
-    if (!draft.service?.specificGravity) return null;
-    if (draft.service?.corrosionAllowance === undefined) return null;
-    if (!draft.materials) return null;
+    // Guard minimal data
+    if (!draft.geometry || !draft.service || !draft.materials) return null;
 
-    const adopted = draft.materials.adoptedThicknesses ?? [];
-    if (adopted.length !== draft.geometry.courses.length) return null;
+    const units = draft.units;
+    const standard = draft.recommendedStandard ?? "API_650";
+
+    const diameter = draft.geometry.diameter ?? NaN;
+    const courses = draft.geometry.courses ?? [];
+
+    const specificGravity = draft.service.specificGravity ?? 1;
+    const corrosionAllowance = draft.service.corrosionAllowance ?? (units === "US" ? 0.125 : 2);
+
+    const designPressure = draft.envelope?.designPressure ?? 0;
+
+    const allowableStressDesign = draft.materials.allowableStressDesign ?? (units === "US" ? 20000 : 137);
+    const allowableStressTest = draft.materials.allowableStressTest ?? (units === "US" ? 21000 : 154);
+    const jointEfficiency = draft.materials.jointEfficiency ?? 0.85;
+
+    const minNominalThickness = draft.materials.minNominalThickness ?? (units === "US" ? 0.25 : 5);
+
+    const adoptedThicknesses = draft.materials.adoptedThicknesses ?? [];
 
     const activeCases = (draft.designCases
       ? (Object.keys(draft.designCases) as any[]).filter((k) => draft.designCases?.[k])
@@ -80,41 +84,71 @@ export default function ResultsPage() {
       liquidHeight: draft.service?.liquidHeights?.[k] ?? 0,
     }));
 
-    return runShellThickness({
-      units: draft.units,
-      standard: draft.recommendedStandard ?? "API_650",
+    try {
+      return runShellThickness({
+        units,
+        standard: standard as any,
 
-      diameter: draft.geometry.diameter,
-      courses: draft.geometry.courses,
+        diameter,
+        courses,
 
-      specificGravity: draft.service.specificGravity,
-      corrosionAllowance: draft.service.corrosionAllowance,
+        specificGravity,
+        corrosionAllowance,
 
-      designPressure: draft.envelope?.designPressure ?? 0,
+        designPressure,
 
-      allowableStressDesign: draft.materials.allowableStressDesign,
-      allowableStressTest: draft.materials.allowableStressTest,
-      jointEfficiency: draft.materials.jointEfficiency,
-      minNominalThickness: draft.materials.minNominalThickness,
-      adoptedThicknesses: adopted,
+        allowableStressDesign,
+        allowableStressTest,
+        jointEfficiency,
 
-      activeCases,
-    });
+        minNominalThickness,
+        adoptedThicknesses,
+
+        activeCases,
+      });
+    } catch {
+      return null;
+    }
   }, [draft]);
 
-  const criticalNote = useMemo(() => {
-    if (!engineResult) return null;
-    if (!Number.isFinite(minWithCA)) return null;
+  const handleSaveProject = () => {
+    if (!draft) return;
+    updateProjectDraft({ savedAt: new Date().toISOString() as any });
+    alert("Project disimpan (local storage).");
+  };
 
-    const allFloored = engineResult.results.every((r) => {
-      // “Floored” kalau tRequired sama dengan minWithCA (within tolerance)
-      return Math.abs(r.tRequired - minWithCA) < 1e-6;
-    });
+  const handleExportCSV = () => {
+    if (!calc) return;
+    const rows = [
+      ["Course", "GoverningCase", "t_calc", "t_required", "t_adopted", "Utilization", "Status"].join(","),
+      ...calc.results.map((r) => {
+        const unit = calc.units === "SI" ? "mm" : "in";
+        const tcalc = r.tCalcGoverning;
+        return [
+          r.courseNo,
+          r.governingCase,
+          fmt(tcalc, 4),
+          fmt(r.tRequired, 4),
+          fmt(r.tAdopted, 4),
+          fmt(r.utilization, 4),
+          r.status,
+        ].join(",");
+      }),
+    ].join("\n");
 
-    return allFloored
-      ? `Semua course terkena minimum thickness floor: t_required = max(t_calc, minNominal + CA) = ${fmt(minWithCA)} ${thickUnit}. Makanya t_required terlihat rata.`
-      : null;
-  }, [engineResult, minWithCA, thickUnit]);
+    const blob = new Blob([rows], { type: "text/csv;charset=utf-8;" });
+    const url = URL.createObjectURL(blob);
+
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = "tankcalc_shell_results.csv";
+    a.click();
+    URL.revokeObjectURL(url);
+  };
+
+  const handleExportPDF = () => {
+    window.print(); // paling aman dulu: print dialog → Save as PDF
+  };
 
   if (!hydrated) {
     return (
@@ -133,15 +167,13 @@ export default function ResultsPage() {
       <main className="min-h-screen re-geo">
         <div className="mx-auto max-w-6xl px-6 py-10 md:px-10 md:py-14">
           <div className="re-card rounded-[2rem] p-7 md:p-9">
-            <div className="text-sm font-semibold text-red-600">
-              Draft project tidak ditemukan.
-            </div>
+            <div className="text-sm text-red-600 font-semibold">Draft project tidak ditemukan.</div>
             <div className="mt-4">
               <Link
-                href="/projects/new"
+                href="/"
                 className="px-4 py-2 rounded-2xl text-sm font-semibold border border-black/10 bg-white/70 hover:bg-white/90 transition"
               >
-                Kembali ke Step 0
+                Ke Beranda
               </Link>
             </div>
           </div>
@@ -149,6 +181,40 @@ export default function ResultsPage() {
       </main>
     );
   }
+
+  if (!calc) {
+    return (
+      <main className="min-h-screen re-geo">
+        <div className="mx-auto max-w-6xl px-6 py-10 md:px-10 md:py-14">
+          <div className="re-card rounded-[2rem] p-7 md:p-9">
+            <div className="text-sm text-red-600 font-semibold">
+              Data belum lengkap untuk menghitung shell thickness.
+            </div>
+            <div className="mt-3 text-sm re-muted">
+              Pastikan Step 0–3 sudah terisi: envelope, service, geometry, dan materials.
+            </div>
+
+            <div className="mt-5 flex flex-wrap gap-2">
+              <Link
+                href="/projects/new/materials"
+                className="px-4 py-2 rounded-2xl text-sm font-semibold border border-black/10 bg-white/70 hover:bg-white/90 transition"
+              >
+                Edit Materials (Step 3)
+              </Link>
+              <Link
+                href="/projects/new/service"
+                className="px-4 py-2 rounded-2xl text-sm font-semibold border border-black/10 bg-white/70 hover:bg-white/90 transition"
+              >
+                Edit Service & Geometry (Step 2)
+              </Link>
+            </div>
+          </div>
+        </div>
+      </main>
+    );
+  }
+
+  const thicknessUnit = calc.units === "SI" ? "mm" : "in";
 
   return (
     <main className="min-h-screen re-geo">
@@ -171,9 +237,7 @@ export default function ResultsPage() {
 
             <div className="hidden sm:block">
               <div className="text-xs md:text-sm re-muted">Projects • New</div>
-              <div className="mt-1 text-sm re-muted">
-                Step 4 — Shell Thickness Results
-              </div>
+              <div className="mt-1 text-sm re-muted">Step 4 — Shell Thickness Results</div>
             </div>
           </div>
 
@@ -186,7 +250,7 @@ export default function ResultsPage() {
             </Link>
 
             <Link
-              href="/projects"
+              href="/projects/saved"
               className="px-4 py-2 rounded-2xl text-sm font-semibold border border-black/10 bg-white/70 hover:bg-white/90 transition"
             >
               Saved Projects
@@ -203,208 +267,166 @@ export default function ResultsPage() {
           <StepPill label="Step 4 • Results" state="active" />
         </div>
 
+        {/* TITLE + SUMMARY */}
         <div className="mt-8 grid grid-cols-1 lg:grid-cols-12 gap-8 lg:gap-10">
-          {/* LEFT */}
           <div className="lg:col-span-8 re-card rounded-[2rem] p-7 md:p-9">
             <div className="text-xs re-muted">Ringkasan hasil</div>
             <h1 className="mt-2 text-2xl md:text-3xl font-extrabold tracking-tight text-[rgb(var(--re-ink))]">
               Shell Thickness — OK/NOT OK per Course
             </h1>
             <p className="mt-2 text-sm md:text-base re-muted leading-relaxed">
-              Di bawah ini ada dua angka: <strong>t_calc</strong> (hasil rumus)
-              dan <strong>t_required</strong> (sesudah minimum thickness).
-              Kalau t_required rata, biasanya karena minimum thickness floor yang dominan.
+              Output fokus pada <strong>t_calc</strong> (hasil rumus) vs <strong>t_required</strong> (sesudah min thickness + CA),
+              governing case, dan status OK/NOT OK.
             </p>
 
-            {/* Controls */}
-            <div className="mt-6 flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-black/10 bg-white/70 p-4">
-              <div className="text-sm font-semibold text-[rgb(var(--re-blue))]">
-                Tampilan tabel
+            {/* ACTIONS */}
+            <div className="mt-6 rounded-2xl border border-black/10 bg-white/60 p-5">
+              <div className="text-sm font-semibold text-[rgb(var(--re-blue))]">Actions</div>
+
+              <div className="mt-4 flex flex-wrap gap-2">
+                <button
+                  type="button"
+                  onClick={handleSaveProject}
+                  className="px-4 py-2 rounded-2xl text-sm font-semibold text-white bg-[rgb(var(--re-blue))] hover:opacity-95 transition"
+                >
+                  Save Project
+                </button>
+
+                <button
+                  type="button"
+                  onClick={handleExportPDF}
+                  className="px-4 py-2 rounded-2xl text-sm font-semibold border border-black/10 bg-white/70 hover:bg-white/90 transition"
+                >
+                  Export PDF
+                </button>
+
+                <button
+                  type="button"
+                  onClick={handleExportCSV}
+                  className="px-4 py-2 rounded-2xl text-sm font-semibold border border-black/10 bg-white/70 hover:bg-white/90 transition"
+                >
+                  Export Excel (CSV)
+                </button>
               </div>
 
-              <button
-                type="button"
-                onClick={() => setShowCalc((v) => !v)}
-                className="px-4 py-2 rounded-2xl text-sm font-semibold border border-black/10 bg-white/80 hover:bg-white transition"
-              >
-                {showCalc ? "Sembunyikan t_calc" : "Tampilkan t_calc"}
-              </button>
+              <div className="mt-3 text-xs re-muted">
+                PDF export memakai print dialog browser (pilih “Save as PDF”). Excel export berupa CSV.
+              </div>
             </div>
 
-            {/* Notes */}
-            {engineResult?.notes?.length ? (
-              <div className="mt-6 rounded-2xl border border-black/10 bg-white/70 p-5">
-                <div className="text-sm font-semibold text-[rgb(var(--re-blue))]">
-                  Metode & catatan
-                </div>
-                <div className="mt-2 text-sm re-muted leading-relaxed">
-                  <div className="font-semibold text-[rgb(var(--re-ink))]">
-                    Method: {engineResult.method}
-                  </div>
-                  <ul className="mt-2 list-disc pl-5">
-                    {engineResult.notes.map((n, i) => (
-                      <li key={i}>{n}</li>
-                    ))}
-                  </ul>
-                </div>
+            {/* METHOD NOTES */}
+            <div className="mt-6 rounded-2xl border border-black/10 bg-white/60 p-5">
+              <div className="text-sm font-semibold text-[rgb(var(--re-blue))]">Metode & catatan</div>
+              <div className="mt-2 text-sm re-muted">
+                <div className="font-semibold text-[rgb(var(--re-ink))]">Method: {calc.method}</div>
+                <ul className="mt-2 list-disc pl-5">
+                  {calc.notes.map((n, i) => (
+                    <li key={i}>{n}</li>
+                  ))}
+                </ul>
               </div>
-            ) : null}
+            </div>
 
-            {criticalNote ? (
-              <div className="mt-4 rounded-2xl border border-[rgb(var(--re-orange))]/30 bg-white/80 p-5">
-                <div className="text-sm font-semibold text-[rgb(var(--re-orange))]">
-                  Kenapa t_required rata?
-                </div>
-                <div className="mt-2 text-sm re-muted leading-relaxed">
-                  {criticalNote}
-                </div>
-              </div>
-            ) : null}
-
-            {/* Table */}
+            {/* TABLE */}
             <div className="mt-6 overflow-hidden rounded-2xl border border-black/10 bg-white/70">
               <div className="overflow-auto">
-                <table className="w-full text-sm">
-                  <thead className="bg-white/70">
-                    <tr className="text-left text-xs re-muted">
-                      <th className="px-4 py-3">Course</th>
-                      <th className="px-4 py-3">Governing case</th>
-
-                      {showCalc ? (
-                        <th className="px-4 py-3">
-                          t_calc ({thickUnit})
-                        </th>
-                      ) : null}
-
-                      <th className="px-4 py-3">
-                        t_required ({thickUnit})
-                      </th>
-                      <th className="px-4 py-3">
-                        t_adopted ({thickUnit})
-                      </th>
-                      <th className="px-4 py-3">Utilization</th>
-                      <th className="px-4 py-3">Status</th>
+                <table className="min-w-full text-sm">
+                  <thead className="bg-white/80">
+                    <tr className="text-left text-[rgb(var(--re-ink))]">
+                      <th className="px-4 py-3 font-semibold">Course</th>
+                      <th className="px-4 py-3 font-semibold">Governing case</th>
+                      <th className="px-4 py-3 font-semibold">t_calc ({thicknessUnit})</th>
+                      <th className="px-4 py-3 font-semibold">t_required ({thicknessUnit})</th>
+                      <th className="px-4 py-3 font-semibold">t_adopted ({thicknessUnit})</th>
+                      <th className="px-4 py-3 font-semibold">Utilization</th>
+                      <th className="px-4 py-3 font-semibold">Status</th>
                     </tr>
                   </thead>
 
-                  <tbody>
-                    {engineResult?.results?.map((r) => {
-                      const floored =
-                        Number.isFinite(minWithCA) &&
-                        Math.abs(r.tRequired - (minWithCA as number)) < 1e-6 &&
-                        r.tCalcGoverning < (minWithCA as number) - 1e-6;
+                  <tbody className="divide-y divide-black/10">
+                    {calc.results.map((r) => (
+                      <tr key={r.courseNo} className="hover:bg-white/60 transition">
+                        <td className="px-4 py-3 font-semibold text-[rgb(var(--re-ink))]">{r.courseNo}</td>
+                        <td className="px-4 py-3 re-muted">{r.governingCase}</td>
 
-                      return (
-                        <tr key={r.courseNo} className="border-t border-black/5">
-                          <td className="px-4 py-3 font-semibold text-[rgb(var(--re-ink))]">
-                            {r.courseNo}
-                          </td>
-                          <td className="px-4 py-3 re-muted">
-                            {r.governingCase}
-                          </td>
+                        <td className="px-4 py-3 text-[rgb(var(--re-blue))] font-semibold">
+                          {fmt(r.tCalcGoverning, 2)}
+                        </td>
 
-                          {showCalc ? (
-                            <td className="px-4 py-3 font-semibold text-[rgb(var(--re-blue))]">
-                              {fmt(r.tCalcGoverning, 2)}
-                            </td>
-                          ) : null}
-
-                          <td className="px-4 py-3 font-semibold text-[rgb(var(--re-blue))]">
-                            {fmt(r.tRequired, 2)}{" "}
-                            {floored ? (
-                              <span className="ml-2 inline-flex items-center rounded-full border border-black/10 bg-white/80 px-2 py-0.5 text-[10px] font-semibold text-[rgb(var(--re-orange))]">
-                                min thickness
-                              </span>
-                            ) : null}
-                          </td>
-
-                          <td className="px-4 py-3 re-muted">{fmt(r.tAdopted, 2)}</td>
-                          <td className="px-4 py-3 re-muted">{fmt(r.utilization, 3)}</td>
-                          <td className="px-4 py-3">
-                            <span
-                              className={[
-                                "px-2.5 py-1 rounded-full text-xs font-semibold border border-black/10",
-                                r.status === "OK"
-                                  ? "bg-white/80 text-[rgb(var(--re-green))]"
-                                  : "bg-white/80 text-red-600",
-                              ].join(" ")}
-                            >
-                              {r.status}
+                        <td className="px-4 py-3 text-[rgb(var(--re-blue))] font-semibold">
+                          {fmt(r.tRequired, 2)}
+                          {r.isMinControlled ? (
+                            <span className="ml-2 inline-flex items-center px-2 py-0.5 rounded-full text-xs font-semibold border border-black/10 bg-white/80 text-[rgb(var(--re-orange))]">
+                              min thickness
                             </span>
-                          </td>
-                        </tr>
-                      );
-                    })}
+                          ) : null}
+                        </td>
 
-                    {!engineResult ? (
-                      <tr>
-                        <td colSpan={showCalc ? 7 : 6} className="px-4 py-6 text-sm re-muted">
-                          Hasil belum bisa dihitung. Cek lagi input Step 2 (Service & Geometry) dan Step 3 (Materials).
+                        <td className="px-4 py-3 re-muted">{fmt(r.tAdopted, 2)}</td>
+                        <td className="px-4 py-3 re-muted">{fmt(r.utilization, 3)}</td>
+
+                        <td className="px-4 py-3">
+                          {r.status === "OK" ? (
+                            <span className="font-semibold text-[rgb(var(--re-green))]">OK</span>
+                          ) : (
+                            <span className="font-semibold text-red-600">NOT OK</span>
+                          )}
                         </td>
                       </tr>
-                    ) : null}
+                    ))}
                   </tbody>
                 </table>
               </div>
             </div>
 
-            <div className="mt-6 flex flex-wrap gap-3">
+            {/* FOOT ACTIONS */}
+            <div className="mt-6 flex flex-wrap gap-2">
               <Link
                 href="/projects/new/materials"
-                className="px-6 py-4 rounded-2xl text-base font-semibold border border-black/10 bg-white/70 hover:bg-white/90 transition"
+                className="px-4 py-2 rounded-2xl text-sm font-semibold border border-black/10 bg-white/70 hover:bg-white/90 transition"
               >
                 Edit Materials (Step 3)
               </Link>
 
               <Link
                 href="/projects/new/service"
-                className="px-6 py-4 rounded-2xl text-base font-semibold border border-black/10 bg-white/70 hover:bg-white/90 transition"
+                className="px-4 py-2 rounded-2xl text-sm font-semibold border border-black/10 bg-white/70 hover:bg-white/90 transition"
               >
                 Edit Service & Geometry (Step 2)
               </Link>
 
               <Link
                 href="/"
-                className="px-6 py-4 rounded-2xl text-base font-semibold border border-black/10 bg-white/70 hover:bg-white/90 transition"
+                className="px-4 py-2 rounded-2xl text-sm font-semibold border border-black/10 bg-white/70 hover:bg-white/90 transition"
               >
                 Ke Beranda
               </Link>
             </div>
           </div>
 
-          {/* RIGHT */}
+          {/* RIGHT SUMMARY CARD */}
           <div className="lg:col-span-4 re-card rounded-[2rem] p-6 md:p-7">
-            <div className="text-xs re-muted">Ringkasan</div>
-            <div className="mt-1 text-lg font-semibold text-[rgb(var(--re-blue))]">
-              Project Summary
+            <div className="text-xs re-muted">Ringkasan project</div>
+            <div className="mt-1 text-lg font-semibold text-[rgb(var(--re-blue))]">Project</div>
+
+            <div className="mt-4 rounded-2xl border border-black/10 bg-white/60 p-5 text-sm re-muted leading-relaxed">
+              <div><strong className="text-[rgb(var(--re-ink))]">Project:</strong> {draft.projectName}</div>
+              <div><strong className="text-[rgb(var(--re-ink))]">Standard:</strong> {draft.recommendedStandard}</div>
+              <div><strong className="text-[rgb(var(--re-ink))]">Units:</strong> {draft.units}</div>
             </div>
 
             <div className="mt-5 rounded-2xl border border-black/10 bg-white/60 p-5 text-sm re-muted leading-relaxed">
-              <div>
-                <strong className="text-[rgb(var(--re-ink))]">Project:</strong>{" "}
-                {draft.projectName}
+              <div className="font-semibold text-[rgb(var(--re-ink))]">Kenapa t_required bisa “rata”?</div>
+              <div className="mt-2">
+                Karena engine apply: <strong>t_required = max(t_calc, minNominal + CA)</strong>.
+                Kalau semua <strong>t_calc</strong> lebih kecil dari min, hasilnya bakal sama (ketahan min).
               </div>
-              <div>
-                <strong className="text-[rgb(var(--re-ink))]">Standard:</strong>{" "}
-                {draft.recommendedStandard ?? "-"}
-              </div>
-              <div>
-                <strong className="text-[rgb(var(--re-ink))]">Units:</strong>{" "}
-                {draft.units}
-              </div>
-
               <div className="mt-3">
-                <strong className="text-[rgb(var(--re-ink))]">Geometry:</strong>
+                Di tabel, lo bisa bedain:
                 <ul className="mt-2 list-disc pl-5">
-                  <li>D: {draft.geometry?.diameter ?? "-"} {lengthUnit}</li>
-                  <li>Hshell: {draft.geometry?.shellHeight ?? "-"} {lengthUnit}</li>
-                  <li>Courses: {draft.geometry?.courses?.length ?? "-"}</li>
+                  <li><strong>t_calc</strong>: hasil rumus (trend fisika)</li>
+                  <li><strong>t_required</strong>: hasil final setelah aturan minimum</li>
                 </ul>
-              </div>
-
-              <div className="mt-3">
-                <strong className="text-[rgb(var(--re-ink))]">Min thickness floor:</strong>{" "}
-                {Number.isFinite(minWithCA) ? `${fmt(minWithCA)} ${thickUnit}` : "-"}
               </div>
             </div>
           </div>
